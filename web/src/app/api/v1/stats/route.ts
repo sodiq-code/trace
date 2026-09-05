@@ -1,19 +1,15 @@
 /**
  * GET /api/v1/stats — dashboard summary stats.
- * In dev: proxies to FastAPI. In prod: returns static demo data.
+ * Tries the local FastAPI service first; falls back to demo data if unreachable.
  */
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { fetchTrace } from '@/lib/trace-proxy';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === 'development') {
-    const port = process.env.TRACE_API_PORT || '8000';
-    try {
-      const resp = await fetch(`http://127.0.0.1:${port}/v1/stats`);
-      if (resp.ok) return NextResponse.json(await resp.json());
-    } catch { /* fall through */ }
-  }
+export async function GET() {
+  const data = await fetchTrace<{ total_assets: number; total_verifications: number; compliance_rate: number }>('/v1/stats');
+  if (data) return NextResponse.json(data);
   return NextResponse.json({
     total_assets: 3,
     total_verifications: 12,

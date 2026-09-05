@@ -1,45 +1,15 @@
 /**
  * GET /api/v1/assets — recent assets list.
- * In dev: proxies to FastAPI. In prod: returns pre-stamped demo assets.
+ * Tries the local FastAPI service first; falls back to pre-stamped demo assets.
  */
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { fetchTrace } from '@/lib/trace-proxy';
+import { DEMO_ASSETS } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_ASSETS = [
-  {
-    asset_id: '44837e88-a2fb-42bf-91f1-c0583365a146',
-    file_type: 'image',
-    file_hash: '6c5c60bdda386d27d9a29e55c0507694a04be19ce21df83568e04b4555d453a4',
-    created_at: '2026-09-05T18:00:00+00:00',
-    file_name: 'demo-image.png',
-    signed_by: 'maya@channel.com',
-  },
-  {
-    asset_id: '1f4ca75d-25c6-44c6-8eb0-ab54aed5110d',
-    file_type: 'audio',
-    file_hash: 'a1b2c3d4e5f6789012345678901234567890123456789012345678901234567890',
-    created_at: '2026-09-05T18:01:00+00:00',
-    file_name: 'demo-audio.wav',
-    signed_by: 'maya@channel.com',
-  },
-  {
-    asset_id: '4e4f6083-3ac7-4181-8b2f-493a517ba550',
-    file_type: 'image',
-    file_hash: 'b2c3d4e5f6789012345678901234567890123456789012345678901234567890123',
-    created_at: '2026-09-05T18:02:00+00:00',
-    file_name: 'demo-text.svg',
-    signed_by: 'maya@channel.com',
-  },
-];
-
-export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === 'development') {
-    const port = process.env.TRACE_API_PORT || '8000';
-    try {
-      const resp = await fetch(`http://127.0.0.1:${port}/v1/assets?limit=20`);
-      if (resp.ok) return NextResponse.json(await resp.json());
-    } catch { /* fall through */ }
-  }
+export async function GET() {
+  const data = await fetchTrace<{ assets: typeof DEMO_ASSETS; count: number }>('/v1/assets?limit=20');
+  if (data && data.assets && data.assets.length > 0) return NextResponse.json(data);
   return NextResponse.json({ assets: DEMO_ASSETS, count: DEMO_ASSETS.length });
 }

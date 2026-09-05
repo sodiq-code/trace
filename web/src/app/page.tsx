@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
 import {
   ShieldCheck,
   UploadCloud,
@@ -14,12 +15,18 @@ import {
   FileDown,
   Info,
   AlertCircle,
+  Search,
+  Github,
+  Filter,
+  Lock,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ComplianceCharts } from '@/components/dashboard/compliance-charts';
 import {
   stampAsset,
   getStats,
@@ -43,6 +50,13 @@ const AI_MODELS = [
   { value: 'other', label: 'Other (type below)' },
 ];
 
+const TYPE_FILTERS = [
+  { value: 'all', label: 'All' },
+  { value: 'image', label: 'Image' },
+  { value: 'audio', label: 'Audio' },
+  { value: 'video', label: 'Video' },
+] as const;
+
 export default function DashboardPage() {
   const [dragging, setDragging] = useState(false);
   const [stamping, setStamping] = useState(false);
@@ -54,11 +68,13 @@ export default function DashboardPage() {
   const [prompt, setPrompt] = useState('');
   const [creator, setCreator] = useState('maya@channel.com');
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<(typeof TYPE_FILTERS)[number]['value']>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshDashboard = useCallback(async () => {
     try {
-      const [s, a] = await Promise.all([getStats(), listAssets(10)]);
+      const [s, a] = await Promise.all([getStats(), listAssets(20)]);
       setStats(s);
       setAssets(a.assets);
     } catch {
@@ -68,7 +84,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     refreshDashboard();
-    // Detect demo mode (production Vercel deployment)
     if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
       setIsDemoMode(true);
     }
@@ -116,7 +131,6 @@ export default function DashboardPage() {
         });
       } finally {
         setStamping(false);
-        // eslint-disable-next-line no-console
         console.log(`[trace] stamp ${files.length} file(s): ${((performance.now() - t0) / 1000).toFixed(2)}s`);
       }
     },
@@ -142,26 +156,47 @@ export default function DashboardPage() {
     [handleStamp],
   );
 
+  const filteredAssets = useMemo(() => {
+    return assets.filter((a) => {
+      if (typeFilter !== 'all' && a.file_type !== typeFilter) return false;
+      if (searchQuery && !a.file_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+      return true;
+    });
+  }, [assets, typeFilter, searchQuery]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#f7f8fa]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f7f8fa] to-[#eef2f7]">
       {/* Header */}
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-5xl px-4 py-4 flex items-center justify-between">
+      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1F3A5F]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1F3A5F] to-[#2E5C8A] shadow-sm">
               <ShieldCheck className="h-5 w-5 text-white" />
             </div>
             <div>
               <h1 className="text-lg font-bold text-[#1F3A5F] leading-tight">Trace</h1>
-              <p className="text-xs text-slate-500 leading-tight">
+              <p className="text-xs text-slate-500 leading-tight hidden sm:block">
                 The Provenance-First AI Content Engine
               </p>
             </div>
           </div>
-          <div className="hidden sm:flex items-center gap-2 text-sm text-slate-600">
-            <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-              Signed in as {creator}
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="secondary"
+              className="bg-emerald-50 text-emerald-700 border-emerald-200 hidden sm:flex"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+              {creator}
             </Badge>
+            <a
+              href="https://github.com/sodiq-code/trace"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-[#1F3A5F] hover:border-[#1F3A5F] transition-colors"
+              aria-label="View source on GitHub"
+            >
+              <Github className="h-4 w-4" />
+            </a>
           </div>
         </div>
       </header>
@@ -169,7 +204,11 @@ export default function DashboardPage() {
       <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-8 space-y-6">
         {/* Demo mode banner */}
         {isDemoMode && (
-          <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"
+          >
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-sm text-amber-900">
               <p className="font-semibold mb-1">Demo mode (read-only)</p>
@@ -188,36 +227,58 @@ export default function DashboardPage() {
                 and run <code className="bg-amber-100 px-1 rounded">trace serve</code> locally.
               </p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Hero / tagline */}
-        <div className="text-center space-y-2">
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#1F3A5F]">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="text-center space-y-3 pt-2"
+        >
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#2E5C8A]/20 bg-[#2E5C8A]/5 px-3 py-1 text-xs font-medium text-[#2E5C8A]">
+            <Lock className="h-3 w-3" />
+            C2PA · EU AI Act Article 50
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#1F3A5F] leading-tight">
             Every AI-generated asset, provenance-tagged in one click.
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base">
-            EU AI Act Article 50 compliant in under one second. Cryptographically-verifiable C2PA
-            manifests.
+          <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
+            Cryptographically-verifiable C2PA manifests in under one second. Prove what AI
+            generated, when, and how — permanently embedded in the file.
           </p>
-        </div>
+        </motion.div>
 
         {/* Drop zone — supports multiple files */}
-        <Card className={`border-2 border-dashed transition-colors ${dragging ? 'border-[#2E5C8A] bg-blue-50' : 'border-slate-300 bg-white'}`}>
+        <Card
+          className={`border-2 border-dashed transition-all duration-200 ${
+            dragging
+              ? 'border-[#2E5C8A] bg-blue-50/50 scale-[1.01] shadow-md'
+              : 'border-slate-300 bg-white hover:border-[#2E5C8A]/50'
+          }`}
+        >
           <CardContent
             className="p-8 sm:p-12"
-            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
+            }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
           >
             <div className="flex flex-col items-center text-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#1F3A5F]/5">
+              <motion.div
+                animate={stamping ? { rotate: 360 } : {}}
+                transition={stamping ? { duration: 1, repeat: Infinity, ease: 'linear' } : {}}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#1F3A5F]/5 to-[#2E5C8A]/10"
+              >
                 {stamping ? (
                   <Loader2 className="h-8 w-8 text-[#2E5C8A] animate-spin" />
                 ) : (
                   <UploadCloud className="h-8 w-8 text-[#1F3A5F]" />
                 )}
-              </div>
+              </motion.div>
               <div>
                 <p className="text-lg font-semibold text-[#1F3A5F]">
                   {stamping ? 'Stamping…' : 'Drop AI-generated assets here'}
@@ -229,7 +290,7 @@ export default function DashboardPage() {
               <Button
                 type="button"
                 variant="default"
-                className="bg-[#1F3A5F] hover:bg-[#2E5C8A]"
+                className="bg-[#1F3A5F] hover:bg-[#2E5C8A] shadow-sm"
                 disabled={stamping}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -260,7 +321,6 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Info banner explaining why metadata is manual */}
             <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-100 p-3">
               <Info className="h-4 w-4 text-[#2E5C8A] shrink-0 mt-0.5" />
               <p className="text-xs text-slate-600">
@@ -310,7 +370,7 @@ export default function DashboardPage() {
                   placeholder="you@channel.com"
                 />
                 <p className="text-xs text-slate-400">
-                  Your email or channel name — recorded as the asset's creator.
+                  Your email or channel name — recorded as the asset&apos;s creator.
                 </p>
               </div>
               <div className="space-y-1.5">
@@ -336,47 +396,54 @@ export default function DashboardPage() {
         {results.length > 0 && (
           <div className="space-y-4">
             {results.map((result, i) => (
-              <Card key={i} className="bg-white border-emerald-200">
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    {result.validation_state.toLowerCase() === 'valid' ? (
-                      <CheckCircle2 className="h-5 w-5 text-[#2E8B57]" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-[#C0392B]" />
-                    )}
-                    <span className="text-[#1F3A5F]">
-                      {result._demo_mode ? 'Preview (demo mode)' : 'Provenance manifest attached'} —{' '}
-                      {result.validation_state}
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary" className="uppercase">
-                      {result.file_type}
-                    </Badge>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      sha256: {result.file_hash.slice(0, 16)}…
-                    </Badge>
-                  </div>
-                  <div className="grid gap-1.5 text-sm">
-                    {result.assertions.map((a, j) => (
-                      <div key={j} className="flex gap-2">
-                        <span className="text-slate-500 min-w-[120px]">{a.name}:</span>
-                        <span className="font-medium text-slate-900">{a.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <a href={`/card/${result.asset_id}`}>
-                      <Button variant="default" className="bg-[#1F3A5F] hover:bg-[#2E5C8A]">
-                        View Provenance Card
-                        <ExternalLink className="h-3.5 w-3.5 ml-2" />
-                      </Button>
-                    </a>
-                  </div>
-                </CardContent>
-              </Card>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.97 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.08 }}
+              >
+                <Card className="bg-white border-emerald-200">
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      {result.validation_state.toLowerCase() === 'valid' ? (
+                        <CheckCircle2 className="h-5 w-5 text-[#2E8B57]" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-[#C0392B]" />
+                      )}
+                      <span className="text-[#1F3A5F]">
+                        {result._demo_mode ? 'Preview (demo mode)' : 'Provenance manifest attached'} —{' '}
+                        {result.validation_state}
+                      </span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="secondary" className="uppercase">
+                        {result.file_type}
+                      </Badge>
+                      <Badge variant="outline" className="font-mono text-xs">
+                        sha256: {result.file_hash.slice(0, 16)}…
+                      </Badge>
+                    </div>
+                    <div className="grid gap-1.5 text-sm">
+                      {result.assertions.map((a, j) => (
+                        <div key={j} className="flex gap-2">
+                          <span className="text-slate-500 min-w-[120px]">{a.name}:</span>
+                          <span className="font-medium text-slate-900">{a.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <a href={`/card/${result.asset_id}`}>
+                        <Button variant="default" className="bg-[#1F3A5F] hover:bg-[#2E5C8A]">
+                          View Provenance Card
+                          <ExternalLink className="h-3.5 w-3.5 ml-2" />
+                        </Button>
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
           </div>
         )}
@@ -387,26 +454,32 @@ export default function DashboardPage() {
             label="Assets stamped"
             value={stats?.total_assets ?? '—'}
             hint="this month"
+            icon={<FileCheck2 className="h-4 w-4" />}
           />
           <StatCard
             label="Compliance rate"
             value={stats ? `${Math.round(stats.compliance_rate * 100)}%` : '—'}
             hint="stamped = compliant"
             accent="green"
+            icon={<ShieldCheck className="h-4 w-4" />}
           />
           <StatCard
             label="Verifications"
             value={stats?.total_verifications ?? '—'}
             hint="third-party checks"
+            icon={<Zap className="h-4 w-4" />}
           />
         </div>
+
+        {/* Compliance overview charts */}
+        <ComplianceCharts assets={assets} stats={stats} />
 
         {/* Export Monthly Report (report §29.4, Should Work) */}
         <div className="flex justify-center">
           <a href="/api/v1/report" download>
             <Button
               variant="outline"
-              className="bg-white border-[#1F3A5F] text-[#1F3A5F] hover:bg-[#1F3A5F] hover:text-white"
+              className="bg-white border-[#1F3A5F] text-[#1F3A5F] hover:bg-[#1F3A5F] hover:text-white transition-colors"
             >
               <FileDown className="h-4 w-4 mr-2" />
               Export Monthly Compliance Report (PDF)
@@ -414,23 +487,59 @@ export default function DashboardPage() {
           </a>
         </div>
 
-        {/* Recent assets */}
+        {/* Recent assets with filter + search */}
         <Card className="bg-white">
           <CardHeader>
-            <CardTitle className="text-base text-[#1F3A5F] flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Recent assets
-            </CardTitle>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <CardTitle className="text-base text-[#1F3A5F] flex items-center gap-2">
+                <History className="h-4 w-4" />
+                Recent assets
+                <span className="text-xs font-normal text-slate-400">
+                  ({filteredAssets.length}/{assets.length})
+                </span>
+              </CardTitle>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search filename…"
+                    className="h-8 w-40 pl-8 text-xs"
+                  />
+                </div>
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 p-0.5">
+                  <Filter className="h-3 w-3 text-slate-400 ml-1.5 mr-0.5" />
+                  {TYPE_FILTERS.map((f) => (
+                    <button
+                      key={f.value}
+                      onClick={() => setTypeFilter(f.value)}
+                      className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                        typeFilter === f.value
+                          ? 'bg-[#1F3A5F] text-white'
+                          : 'text-slate-500 hover:text-[#1F3A5F]'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {assets.length === 0 ? (
               <p className="text-sm text-slate-500 py-6 text-center">
                 No assets stamped yet. Drop a file above to begin.
               </p>
+            ) : filteredAssets.length === 0 ? (
+              <p className="text-sm text-slate-500 py-6 text-center">
+                No assets match your filter.
+              </p>
             ) : (
-              <div className="max-h-72 overflow-y-auto -mx-2">
+              <div className="max-h-72 overflow-y-auto -mx-2 trace-scroll">
                 <table className="w-full text-sm">
-                  <thead className="text-xs text-slate-500 uppercase">
+                  <thead className="text-xs text-slate-500 uppercase sticky top-0 bg-white">
                     <tr>
                       <th className="text-left font-medium px-2 py-2">Asset</th>
                       <th className="text-left font-medium px-2 py-2">Type</th>
@@ -440,8 +549,8 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {assets.map((a) => (
-                      <tr key={a.asset_id} className="border-t border-slate-100 hover:bg-slate-50">
+                    {filteredAssets.map((a) => (
+                      <tr key={a.asset_id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
                         <td className="px-2 py-2 font-medium text-slate-900 truncate max-w-[180px]">
                           {a.file_name}
                         </td>
@@ -461,7 +570,7 @@ export default function DashboardPage() {
                         <td className="px-2 py-2 text-right">
                           <a
                             href={`/card/${a.asset_id}`}
-                            className="text-[#2E5C8A] hover:underline text-xs"
+                            className="text-[#2E5C8A] hover:underline text-xs font-medium"
                           >
                             Card →
                           </a>
@@ -476,10 +585,23 @@ export default function DashboardPage() {
         </Card>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white mt-auto">
+      <footer className="border-t border-slate-200 bg-white/80 backdrop-blur-sm mt-auto">
         <div className="mx-auto max-w-5xl px-4 py-4 text-center text-xs text-slate-500">
-          Trace generates cryptographically-verifiable C2PA manifests aligned with EU AI Act
-          Article 50. Trace does not constitute legal advice.
+          <p className="mb-1">
+            Trace generates cryptographically-verifiable C2PA manifests aligned with EU AI Act
+            Article 50. Trace does not constitute legal advice.
+          </p>
+          <p className="text-slate-400">
+            Built with c2pa-python · ES256 signatures ·{' '}
+            <a
+              href="https://github.com/sodiq-code/trace"
+              className="underline hover:text-[#2E5C8A]"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              github.com/sodiq-code/trace
+            </a>
+          </p>
         </div>
       </footer>
     </div>
@@ -491,18 +613,31 @@ function StatCard({
   value,
   hint,
   accent,
+  icon,
 }: {
   label: string;
   value: string | number;
   hint?: string;
   accent?: 'green';
+  icon?: React.ReactNode;
 }) {
   return (
-    <Card className="bg-white">
+    <Card className="bg-white hover:shadow-md transition-shadow">
       <CardContent className="p-4">
-        <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
+          {icon && (
+            <span
+              className={`flex h-7 w-7 items-center justify-center rounded-md ${
+                accent === 'green' ? 'bg-emerald-50 text-[#2E8B57]' : 'bg-[#1F3A5F]/5 text-[#1F3A5F]'
+              }`}
+            >
+              {icon}
+            </span>
+          )}
+        </div>
         <p
-          className={`text-2xl font-bold mt-1 ${
+          className={`text-2xl font-bold mt-1.5 ${
             accent === 'green' ? 'text-[#2E8B57]' : 'text-[#1F3A5F]'
           }`}
         >

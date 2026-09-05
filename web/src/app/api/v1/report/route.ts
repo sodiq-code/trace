@@ -1,31 +1,25 @@
 /**
  * GET /api/v1/report — Monthly Compliance Report PDF.
- * Generates a simple PDF using ReportLab-style content.
- * In dev: proxies to FastAPI. In prod: generates a minimal PDF.
+ * Tries the FastAPI service (ReportLab-generated PDF) first; falls back to a
+ * minimal inline PDF if the service is unreachable.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchTraceBuffer } from '@/lib/trace-proxy';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === 'development') {
-    const port = process.env.TRACE_API_PORT || '8000';
-    try {
-      const resp = await fetch(`http://127.0.0.1:${port}/v1/report`);
-      if (resp.ok) {
-        const buf = await resp.arrayBuffer();
-        return new NextResponse(buf, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': 'attachment; filename="trace-compliance-report.pdf"',
-          },
-        });
-      }
-    } catch { /* fall through */ }
+export async function GET(_request: NextRequest) {
+  const remote = await fetchTraceBuffer('/v1/report');
+  if (remote) {
+    return new NextResponse(remote.buffer, {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="trace-compliance-report.pdf"',
+      },
+    });
   }
 
-  // In production, generate a minimal PDF inline.
   const pdf = generateMinimalPdf();
   return new NextResponse(pdf, {
     headers: {
@@ -36,7 +30,6 @@ export async function GET(request: NextRequest) {
 }
 
 function generateMinimalPdf(): Uint8Array {
-  // A minimal valid PDF with the compliance report content.
   const content = [
     'Trace - Monthly Compliance Report',
     'Creator: maya@channel.com',
@@ -75,12 +68,12 @@ ${textStream}endstream endobj
 5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
 xref
 0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000266 00000 n 
-${1000 + textStream.length} 00000 n 
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000266 00000 n
+${1000 + textStream.length} 00000 n
 trailer << /Size 6 /Root 1 0 R >>
 startxref
 ${1100 + textStream.length}
