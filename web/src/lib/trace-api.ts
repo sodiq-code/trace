@@ -17,6 +17,8 @@ export interface StampResponse {
   manifest_url: string;
   validation_state: string;
   assertions: { name: string; value: string }[];
+  _demo_mode?: boolean;
+  _note?: string;
 }
 
 export interface VerifyResponse {

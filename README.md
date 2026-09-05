@@ -115,6 +115,26 @@ cd web && npm install && npm run dev   # http://localhost:3000
 Open `http://localhost:3000`, drop a PNG into the dropzone, and watch the
 Provenance Card appear with a green "Cryptographic signature: VALID" badge.
 
+## Live demo
+
+Trace is deployed on Vercel (free tier). The live dashboard serves pre-stamped
+demo assets — try the Provenance Card URLs below to see the green VALID badge
+and full source chain:
+
+| Resource | URL |
+| --- | --- |
+| **Dashboard** | https://trace-provenance.vercel.app |
+| **Provenance Card (image)** | https://trace-provenance.vercel.app/card/44837e88-a2fb-42bf-91f1-c0583365a146 |
+| **Provenance Card (audio)** | https://trace-provenance.vercel.app/card/1f4ca75d-25c6-44c6-8eb0-ab54aed5110d |
+| **Provenance Card (text)** | https://trace-provenance.vercel.app/card/4e4f6083-3ac7-4181-8b2f-493a517ba550 |
+
+> **Note on the live demo:** The Vercel deployment runs in **demo mode** — it
+> serves pre-stamped assets and returns a demo response when you upload a file.
+> Real C2PA stamping requires the Python `c2pa-python` library (a 14.8MB native
+> Rust binding) which cannot run in Vercel's serverless environment. To stamp
+> your own assets, clone the repo and run `trace serve` locally — the dashboard
+> at `localhost:3000` will then proxy to the real FastAPI stamping service.
+
 ---
 
 ## How it works

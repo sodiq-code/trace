@@ -1,12 +1,13 @@
 """Trace command-line interface.
 
 Surface (report Sec 25.2):
-    trace init   [--email X --channel Y]         provision ~/.trace/
-    trace stamp  <file> [--model --prompt --creator --out]
-    trace verify <file>                          verify a stamped asset
-    trace list   [--limit N]                     list recently stamped assets
-    trace serve  [--host --port]                 start the FastAPI HTTP API
-    trace report [--out FILE]                    generate Monthly Compliance Report PDF
+    trace init      [--email X --channel Y]         provision ~/.trace/
+    trace stamp     <file> [--model --prompt --creator --out]
+    trace stamp-dir <dir>  [--model --prompt --creator --out]   batch (report §19.2)
+    trace verify    <file>                          verify a stamped asset
+    trace list      [--limit N]                     list recently stamped assets
+    trace serve     [--host --port]                 start the FastAPI HTTP API
+    trace report    [--out FILE]                    generate Monthly Compliance Report PDF
     trace --version
 """
 from __future__ import annotations
@@ -118,6 +119,78 @@ def cmd_stamp(args: argparse.Namespace) -> int:
         "validation_state": result.validation_state,
     }))
     return 0
+
+
+def cmd_stamp_dir(args: argparse.Namespace) -> int:
+    """Batch-stamp every supported file in a directory (report §19.2 Should Work)."""
+    directory = Path(args.directory).expanduser()
+    if not directory.is_dir():
+        _err(f"directory not found: {directory}")
+        return 2
+
+    creator = args.creator
+    if not creator:
+        cfg = keys.load_creator_config()
+        creator = (cfg or {}).get("creator_email", "unknown@trace.local")
+
+    # Find all supported files in the directory.
+    supported_exts = set(config.EXT_TO_FILETYPE.keys())
+    files = sorted(
+        f for f in directory.iterdir()
+        if f.is_file() and f.suffix.lower() in supported_exts
+    )
+
+    if not files:
+        _err(f"no supported files found in {directory}")
+        _err(f"supported: {', '.join(sorted(supported_exts))}")
+        return 1
+
+    db = Database()
+    stamper = Stamper(creator=creator, db=db)
+    results_list = []
+    success = 0
+    failed = 0
+
+    for f in files:
+        try:
+            result = stamper.stamp(
+                f,
+                model=args.model,
+                prompt=args.prompt,
+                creator=creator,
+                dest_dir=args.out,
+            )
+            results_list.append(result)
+            success += 1
+        except StamperError as exc:
+            _err(f"{f.name}: {exc}")
+            failed += 1
+
+    db.close()
+
+    _box(
+        f"Batch stamp complete — {success} succeeded, {failed} failed",
+        [
+            f"directory: {directory}",
+            f"model:     {args.model}",
+            f"creator:   {creator}",
+            "",
+            *(f"  {'✓' if r.validation_state.lower()=='valid' else '✗'} {Path(r.source_path).name} → {r.card_url}"
+              for r in results_list),
+        ],
+    )
+
+    # Machine-parseable JSON for pipelines.
+    print(json.dumps({
+        "success": success,
+        "failed": failed,
+        "assets": [
+            {"file": r.source_path, "asset_id": r.asset_id, "card_url": r.card_url,
+             "validation_state": r.validation_state}
+            for r in results_list
+        ],
+    }))
+    return 0 if failed == 0 else 1
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
@@ -259,6 +332,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_stamp.add_argument("--creator", default=None, help="creator identity (default: ~/.trace/config.json)")
     p_stamp.add_argument("--out", default=None, help="output directory for the signed asset")
     p_stamp.set_defaults(func=cmd_stamp)
+
+    # stamp-dir (batch — report §19.2 Should Work)
+    p_stampdir = sub.add_parser("stamp-dir", help="batch-stamp every supported file in <directory>")
+    p_stampdir.add_argument("directory", help="directory containing files to stamp")
+    p_stampdir.add_argument("--model", default="unknown-ai-model", help="generator model (applied to all files)")
+    p_stampdir.add_argument("--prompt", default="", help="generation prompt (applied to all files)")
+    p_stampdir.add_argument("--creator", default=None, help="creator identity (default: ~/.trace/config.json)")
+    p_stampdir.add_argument("--out", default=None, help="output directory for the signed assets")
+    p_stampdir.set_defaults(func=cmd_stamp_dir)
 
     # verify
     p_verify = sub.add_parser("verify", help="verify a stamped asset's manifest integrity")
