@@ -179,7 +179,7 @@ export default function ProvenanceCardPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
 
-              {/* The green compliance checkmark — largest element (report Sec 29.1 principle 1) */}
+              {/* The green compliance checkmark — the largest element on the card */}
               <div className="flex flex-col items-center py-4">
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
@@ -209,7 +209,7 @@ export default function ProvenanceCardPage({ params }: { params: Promise<{ id: s
                 </p>
               </div>
 
-              {/* Source chain timeline (report Sec 29.3) */}
+              {/* Source chain timeline */}
               <div className="space-y-3">
                 <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
                   Source chain
@@ -272,7 +272,7 @@ export default function ProvenanceCardPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
 
-              {/* Verify button (report Sec 29.3 bottom) */}
+              {/* Verify button */}
               <Button
                 onClick={handleVerify}
                 disabled={verifying}

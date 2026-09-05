@@ -39,7 +39,7 @@ const STEPS = [
   {
     icon: FileCheck2,
     title: '4. Share the Provenance Card',
-    body: 'Every stamped asset gets a shareable Provenance Card URL. A judge, editor, or viewer can verify the signature in one click — no account needed.',
+    body: 'Every stamped asset gets a shareable Provenance Card URL. An editor, brand, or viewer can verify the signature in one click — no account needed.',
   },
 ];
 
@@ -76,7 +76,7 @@ export function HowItWorks() {
           <ScrollText className="h-4 w-4" />
           How Trace works
           <Badge variant="outline" className="ml-1 text-[10px] font-normal text-slate-400 border-slate-200">
-            for judges & new users
+            how it works
           </Badge>
         </CardTitle>
       </CardHeader>

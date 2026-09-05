@@ -38,6 +38,12 @@ import { HowItWorks } from '@/components/dashboard/how-it-works';
 import { CreatorSwitcher } from '@/components/dashboard/creator-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import {
+  StagingArea,
+  detectFileType,
+  suggestModel,
+  type StagedFile,
+} from '@/components/dashboard/staging-area';
+import {
   stampAsset,
   getStats,
   listAssets,
@@ -46,19 +52,6 @@ import {
   type AssetListItem,
 } from '@/lib/trace-api';
 import { toast } from 'sonner';
-
-const AI_MODELS = [
-  { value: '', label: '— Select AI model —' },
-  { value: 'midjourney-v6', label: 'Midjourney v6' },
-  { value: 'dall-e-3', label: 'DALL-E 3' },
-  { value: 'stable-diffusion-xl', label: 'Stable Diffusion XL' },
-  { value: 'gpt-4o', label: 'GPT-4o (image gen)' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-  { value: 'elevenlabs-v2', label: 'ElevenLabs v2 (audio)' },
-  { value: 'sora', label: 'Sora (video)' },
-  { value: 'runway-gen3', label: 'Runway Gen-3 (video)' },
-  { value: 'other', label: 'Other (type below)' },
-];
 
 const TYPE_FILTERS = [
   { value: 'all', label: 'All', icon: Database },
@@ -92,18 +85,17 @@ function downloadCsv(filename: string, rows: AssetListItem[]) {
 export default function DashboardPage() {
   const [dragging, setDragging] = useState(false);
   const [stamping, setStamping] = useState(false);
-  const [results, setResults] = useState<StampResponse[]>([]);
+  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [assets, setAssets] = useState<AssetListItem[]>([]);
   const [loadingDashboard, setLoadingDashboard] = useState(true);
-  const [model, setModel] = useState('');
-  const [customModel, setCustomModel] = useState('');
-  const [prompt, setPrompt] = useState('');
   const [creator, setCreator] = useState('maya@channel.com');
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_FILTERS)[number]['value']>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const stagingRef = useRef<HTMLDivElement>(null);
 
   const refreshDashboard = useCallback(async () => {
     setLoadingDashboard(true);
@@ -120,16 +112,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     refreshDashboard();
-    // Detect demo mode by probing the stamp endpoint with a tiny request and
-    // checking whether the response carries `_demo_mode` (the fallback path).
-    // We no longer assume demo mode just because the hostname is vercel.app —
-    // the public Vercel deployment now proxies to a real FastAPI backend.
     if (typeof window !== 'undefined') {
       (async () => {
         try {
           const probe = await fetch('/api/healthz');
           const data = await probe.json();
-          // If healthz reports an unreachable backend, surface demo mode.
           if (data && data.demo_mode) setIsDemoMode(true);
         } catch {
           /* ignore */
@@ -138,71 +125,95 @@ export default function DashboardPage() {
     }
   }, [refreshDashboard]);
 
-  const effectiveModel = model === 'other' ? customModel : model;
+  // --- Staging logic: files are staged, not immediately stamped ---
+  const addFiles = useCallback((fileList: File[]) => {
+    const newStaged: StagedFile[] = fileList.map((file) => {
+      const fileType = detectFileType(file);
+      return {
+        id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        file,
+        model: suggestModel(fileType),
+        customModel: '',
+        prompt: '',
+        status: 'pending' as const,
+      };
+    });
+    setStagedFiles((prev) => [...prev, ...newStaged]);
+    // Scroll to the staging area so the user sees it
+    setTimeout(() => {
+      stagingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  }, []);
 
-  const handleStamp = useCallback(
-    async (files: File[]) => {
-      if (!effectiveModel) {
-        toast.error('Please select an AI model', {
-          description: 'The model field tells Trace which AI tool generated the asset.',
-        });
-        return;
-      }
-      setStamping(true);
-      setResults([]);
-      const t0 = performance.now();
+  const updateStaged = useCallback((id: string, patch: Partial<StagedFile>) => {
+    setStagedFiles((prev) => prev.map((sf) => (sf.id === id ? { ...sf, ...patch } : sf)));
+  }, []);
+
+  const removeStaged = useCallback((id: string) => {
+    setStagedFiles((prev) => prev.filter((sf) => sf.id !== id));
+  }, []);
+
+  const handleStampAll = useCallback(async () => {
+    const pending = stagedFiles.filter((sf) => sf.status === 'pending');
+    if (pending.length === 0) return;
+    setStamping(true);
+    const t0 = performance.now();
+    // Mark all pending as stamping
+    setStagedFiles((prev) =>
+      prev.map((sf) => (sf.status === 'pending' ? { ...sf, status: 'stamping' } : sf)),
+    );
+    const creatorLocal = creator;
+    for (const sf of pending) {
+      const model = sf.model === 'other' ? sf.customModel.trim() : sf.model;
       try {
-        const stampResults: StampResponse[] = [];
-        for (const file of files) {
-          const result = await stampAsset(file, {
-            model: effectiveModel,
-            prompt,
-            creator,
-          });
-          stampResults.push(result);
-        }
-        setResults(stampResults);
-        if (stampResults.length === 1) {
-          toast.success('Provenance manifest attached', {
-            description: `${stampResults[0].validation_state} · ${files[0].name}`,
-          });
-        } else {
-          toast.success(`${stampResults.length} assets stamped`, {
-            description: stampResults.every((r) => r.validation_state === 'Valid')
-              ? 'All valid'
-              : 'Some failed — check results',
-          });
-        }
-        await refreshDashboard();
-      } catch (err) {
-        toast.error('Stamping failed', {
-          description: err instanceof Error ? err.message : 'Unknown error',
+        const result = await stampAsset(sf.file, {
+          model,
+          prompt: sf.prompt,
+          creator: creatorLocal,
         });
-      } finally {
-        setStamping(false);
-        console.log(`[trace] stamp ${files.length} file(s): ${((performance.now() - t0) / 1000).toFixed(2)}s`);
+        setStagedFiles((prev) =>
+          prev.map((s) => (s.id === sf.id ? { ...s, status: 'done', result } : s)),
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unknown error';
+        setStagedFiles((prev) =>
+          prev.map((s) => (s.id === sf.id ? { ...s, status: 'error', error: msg } : s)),
+        );
+        toast.error(`Stamping failed: ${sf.file.name}`, { description: msg });
       }
-    },
-    [effectiveModel, customModel, prompt, creator, refreshDashboard],
-  );
+    }
+    setStamping(false);
+    console.log(`[trace] stamp ${pending.length} file(s): ${((performance.now() - t0) / 1000).toFixed(2)}s`);
+    const successCount = pending.length;
+    if (successCount > 0) {
+      toast.success(`${successCount} asset${successCount === 1 ? '' : 's'} stamped`, {
+        description: 'Provenance manifest attached — see results below',
+      });
+    }
+    await refreshDashboard();
+    // Scroll to results
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+  }, [stagedFiles, creator, refreshDashboard]);
 
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragging(false);
       const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) handleStamp(files);
+      if (files.length > 0) addFiles(files);
     },
-    [handleStamp],
+    [addFiles],
   );
 
   const onFileChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
-      if (files.length > 0) handleStamp(files);
+      if (files.length > 0) addFiles(files);
       e.target.value = '';
     },
-    [handleStamp],
+    [addFiles],
   );
 
   const filteredAssets = useMemo(() => {
@@ -224,6 +235,8 @@ export default function DashboardPage() {
       description: `${assets.length} rows · trace-assets-${ts}.csv`,
     });
   }, [assets]);
+
+  const completedResults = stagedFiles.filter((sf) => sf.status === 'done' && sf.result);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f7f8fa] to-[#eef2f7] dark:from-slate-950 dark:to-slate-900">
@@ -258,7 +271,7 @@ export default function DashboardPage() {
       </header>
 
       <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-8 space-y-6">
-        {/* Demo mode banner */}
+        {/* Backend offline banner */}
         {isDemoMode && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
@@ -322,7 +335,7 @@ export default function DashboardPage() {
         {/* How it works explainer */}
         <HowItWorks />
 
-        {/* Drop zone — supports multiple files */}
+        {/* Drop zone */}
         <Card
           className={`border-2 border-dashed transition-all duration-200 ${
             dragging
@@ -356,7 +369,8 @@ export default function DashboardPage() {
                   {stamping ? 'Stamping…' : 'Drop AI-generated assets here'}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — under 100MB each
+                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — under 100MB each.
+                  You can mix image, audio, and video; each gets its own model.
                 </p>
               </div>
               <Button
@@ -381,151 +395,84 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Metadata inputs — manual by design (report §21.2) */}
-        <Card className="bg-white dark:bg-slate-900">
-          <CardHeader>
-            <CardTitle className="text-base text-[#1F3A5F] dark:text-slate-100 flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Asset metadata
-              <span className="text-xs font-normal text-slate-400 ml-1">
-                (required — you specify the source)
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 p-3">
-              <Info className="h-4 w-4 text-[#2E5C8A] shrink-0 mt-0.5" />
-              <p className="text-xs text-slate-600 dark:text-slate-300">
-                Trace does <strong>not</strong> auto-detect the AI model or prompt — this is
-                deliberate (report §21.2). You tell Trace which tool generated the asset and what
-                prompt you used. This metadata is embedded in the C2PA manifest as a permanent,
-                cryptographically-verifiable provenance record.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="model" className="text-xs text-slate-600 dark:text-slate-400">
-                  AI model <span className="text-red-500">*</span>
-                </Label>
-                <select
-                  id="model"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-slate-700 dark:bg-slate-950"
+        {/* Staging area — per-file model selection */}
+        <div ref={stagingRef}>
+          <StagingArea
+            files={stagedFiles}
+            onUpdate={updateStaged}
+            onRemove={removeStaged}
+            onStampAll={handleStampAll}
+            stamping={stamping}
+            resultsRef={resultsRef}
+          />
+        </div>
+
+        {/* Results — completed stamps */}
+        <div ref={resultsRef}>
+          {completedResults.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-base font-semibold text-[#1F3A5F] dark:text-slate-100 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-[#2E8B57]" />
+                Stamped assets
+                <span className="text-xs font-normal text-slate-400">({completedResults.length})</span>
+              </h3>
+              {completedResults.map((sf) => (
+                <motion.div
+                  key={sf.id}
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
                 >
-                  {AI_MODELS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-                {model === 'other' && (
-                  <Input
-                    className="mt-1"
-                    placeholder="Type the model name"
-                    value={customModel}
-                    onChange={(e) => setCustomModel(e.target.value)}
-                  />
-                )}
-                <p className="text-xs text-slate-400">
-                  The AI tool that generated this asset (e.g. Midjourney, DALL-E, ElevenLabs).
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="creator" className="text-xs text-slate-600 dark:text-slate-400">
-                  Creator identity
-                </Label>
-                <Input
-                  id="creator"
-                  value={creator}
-                  onChange={(e) => setCreator(e.target.value)}
-                  placeholder="you@channel.com"
-                />
-                <p className="text-xs text-slate-400">
-                  Switch with the button in the header, or type a new one below.
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="prompt" className="text-xs text-slate-600 dark:text-slate-400">
-                  Generation prompt
-                </Label>
-                <Input
-                  id="prompt"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder='e.g. "neon tech thumbnail"'
-                />
-                <p className="text-xs text-slate-400">
-                  The prompt you used to generate this asset. Becomes part of the permanent
-                  provenance record.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Results — supports multiple */}
-        {results.length > 0 && (
-          <div className="space-y-4">
-            {results.map((result, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.08 }}
-              >
-                <Card className="bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-800">
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      {result.validation_state.toLowerCase() === 'valid' ? (
-                        <CheckCircle2 className="h-5 w-5 text-[#2E8B57]" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-[#C0392B]" />
-                      )}
-                      <span className="text-[#1F3A5F] dark:text-slate-100">
-                        {result._demo_mode ? 'Preview (demo mode)' : 'Provenance manifest attached'} —{' '}
-                        {result.validation_state}
-                      </span>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary" className="uppercase">
-                        {result.file_type}
-                      </Badge>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        sha256: {result.file_hash.slice(0, 16)}…
-                      </Badge>
-                      {result._demo_mode && (
-                        <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/30">
-                          preview only
+                  <Card className="bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-800">
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {sf.result!.validation_state.toLowerCase() === 'valid' ? (
+                          <CheckCircle2 className="h-5 w-5 text-[#2E8B57]" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-[#C0392B]" />
+                        )}
+                        <span className="text-[#1F3A5F] dark:text-slate-100">
+                          {sf.result!._demo_mode ? 'Preview (backend offline)' : 'Provenance manifest attached'} —{' '}
+                          {sf.result!.validation_state}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="secondary" className="uppercase">
+                          {sf.result!.file_type}
                         </Badge>
-                      )}
-                    </div>
-                    <div className="grid gap-1.5 text-sm">
-                      {result.assertions.map((a, j) => (
-                        <div key={j} className="flex gap-2">
-                          <span className="text-slate-500 dark:text-slate-400 min-w-[120px]">{a.name}:</span>
-                          <span className="font-medium text-slate-900 dark:text-slate-100">{a.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      <a href={`/card/${result.asset_id}`}>
-                        <Button variant="default" className="bg-[#1F3A5F] hover:bg-[#2E5C8A]">
-                          View Provenance Card
-                          <ExternalLink className="h-3.5 w-3.5 ml-2" />
-                        </Button>
-                      </a>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        )}
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {sf.file.name}
+                        </Badge>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          sha256: {sf.result!.file_hash.slice(0, 16)}…
+                        </Badge>
+                      </div>
+                      <div className="grid gap-1.5 text-sm">
+                        {sf.result!.assertions.map((a, j) => (
+                          <div key={j} className="flex gap-2">
+                            <span className="text-slate-500 dark:text-slate-400 min-w-[120px]">{a.name}:</span>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">{a.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2 pt-2">
+                        <a href={`/card/${sf.result!.asset_id}`}>
+                          <Button variant="default" className="bg-[#1F3A5F] hover:bg-[#2E5C8A]">
+                            View Provenance Card
+                            <ExternalLink className="h-3.5 w-3.5 ml-2" />
+                          </Button>
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Compliance Dashboard (report §29.2) */}
+        {/* Compliance stats */}
         <div className="grid gap-4 sm:grid-cols-3">
           {loadingDashboard ? (
             <>
@@ -558,7 +505,7 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Compliance overview charts */}
+        {/* Compliance charts */}
         {loadingDashboard ? (
           <div className="grid gap-4 lg:grid-cols-2">
             <Skeleton className="h-[260px] rounded-lg" />
@@ -598,7 +545,7 @@ export default function DashboardPage() {
           </TooltipProvider>
         </div>
 
-        {/* Recent assets with filter + search */}
+        {/* Recent assets */}
         <Card className="bg-white dark:bg-slate-900">
           <CardHeader>
             <div className="flex items-center justify-between gap-3 flex-wrap">
