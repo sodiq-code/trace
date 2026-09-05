@@ -120,8 +120,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     refreshDashboard();
-    if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
-      setIsDemoMode(true);
+    // Detect demo mode by probing the stamp endpoint with a tiny request and
+    // checking whether the response carries `_demo_mode` (the fallback path).
+    // We no longer assume demo mode just because the hostname is vercel.app —
+    // the public Vercel deployment now proxies to a real FastAPI backend.
+    if (typeof window !== 'undefined') {
+      (async () => {
+        try {
+          const probe = await fetch('/api/healthz');
+          const data = await probe.json();
+          // If healthz reports an unreachable backend, surface demo mode.
+          if (data && data.demo_mode) setIsDemoMode(true);
+        } catch {
+          /* ignore */
+        }
+      })();
     }
   }, [refreshDashboard]);
 
@@ -254,11 +267,11 @@ export default function DashboardPage() {
           >
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-sm text-amber-900 dark:text-amber-200">
-              <p className="font-semibold mb-1">Demo mode (read-only)</p>
+              <p className="font-semibold mb-1">Backend offline (read-only fallback)</p>
               <p>
-                This live deployment serves pre-stamped demo assets. Uploading a file returns a
-                preview response — it does <strong>not</strong> create a real C2PA manifest. To
-                stamp your own assets with real cryptographic provenance,{' '}
+                The Trace provenance backend is not reachable right now, so uploads return a preview
+                response instead of a real C2PA manifest. To stamp assets with real cryptographic
+                provenance,{' '}
                 <a
                   href="https://github.com/sodiq-code/trace"
                   className="underline font-medium"
