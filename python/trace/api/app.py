@@ -73,17 +73,14 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
 
-    # CORS: allow the Next.js dashboard (port 3000) and local dev origins.
-    # No auth in MVP — the verifier is *meant* to be publicly callable.
+    # CORS: the verifier is *meant* to be publicly callable (blueprint §26 —
+    # "no auth in MVP, the verifier is meant to be publicly callable"). Allow
+    # all origins so the Vercel-hosted dashboard, the public gateway, and any
+    # judge's browser can all reach the API.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3001",
-        ],
-        allow_credentials=True,
+        allow_origins=["*"],
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )

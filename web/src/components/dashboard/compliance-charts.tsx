@@ -67,16 +67,16 @@ export function ComplianceCharts({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       {/* Assets by type */}
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-slate-900">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base text-[#1F3A5F] flex items-center gap-2">
+          <CardTitle className="text-base text-[#1F3A5F] dark:text-slate-100 flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
             Assets by type
           </CardTitle>
         </CardHeader>
         <CardContent>
           {typeData.length === 0 ? (
-            <p className="text-sm text-slate-400 py-8 text-center">No assets yet</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 py-8 text-center">No assets yet</p>
           ) : (
             <div className="h-[180px] w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -114,9 +114,9 @@ export function ComplianceCharts({
       </Card>
 
       {/* Compliance donut */}
-      <Card className="bg-white">
+      <Card className="bg-white dark:bg-slate-900">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base text-[#1F3A5F] flex items-center gap-2">
+          <CardTitle className="text-base text-[#1F3A5F] dark:text-slate-100 flex items-center gap-2">
             <PieIcon className="h-4 w-4" />
             Compliance rate
           </CardTitle>
@@ -161,10 +161,10 @@ export function ComplianceCharts({
               <span className="text-2xl font-bold text-[#2E8B57]">
                 {Math.round((stats?.compliance_rate ?? 1) * 100)}%
               </span>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wide">valid</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wide">valid</span>
             </div>
           </div>
-          <p className="text-xs text-slate-400 mt-2 text-center">
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 text-center">
             {totalAssets} asset{totalAssets === 1 ? '' : 's'} stamped · all carry valid C2PA signatures
           </p>
         </CardContent>

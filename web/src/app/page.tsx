@@ -20,13 +20,23 @@ import {
   Filter,
   Lock,
   Zap,
+  FileSpreadsheet,
+  Database,
+  Cpu,
+  KeyRound,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 import { ComplianceCharts } from '@/components/dashboard/compliance-charts';
+import { HowItWorks } from '@/components/dashboard/how-it-works';
+import { CreatorSwitcher } from '@/components/dashboard/creator-switcher';
+import { ThemeToggle } from '@/components/theme-toggle';
 import {
   stampAsset,
   getStats,
@@ -51,11 +61,33 @@ const AI_MODELS = [
 ];
 
 const TYPE_FILTERS = [
-  { value: 'all', label: 'All' },
-  { value: 'image', label: 'Image' },
-  { value: 'audio', label: 'Audio' },
-  { value: 'video', label: 'Video' },
+  { value: 'all', label: 'All', icon: Database },
+  { value: 'image', label: 'Image', icon: Sparkles },
+  { value: 'audio', label: 'Audio', icon: Zap },
+  { value: 'video', label: 'Video', icon: Cpu },
 ] as const;
+
+function downloadCsv(filename: string, rows: AssetListItem[]) {
+  const headers = ['asset_id', 'file_name', 'file_type', 'file_hash', 'signed_by', 'created_at'];
+  const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [
+    headers.join(','),
+    ...rows.map((r) =>
+      [r.asset_id, r.file_name, r.file_type, r.file_hash, r.signed_by, r.created_at]
+        .map(escape)
+        .join(','),
+    ),
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 export default function DashboardPage() {
   const [dragging, setDragging] = useState(false);
@@ -63,6 +95,7 @@ export default function DashboardPage() {
   const [results, setResults] = useState<StampResponse[]>([]);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [assets, setAssets] = useState<AssetListItem[]>([]);
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
   const [model, setModel] = useState('');
   const [customModel, setCustomModel] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -73,12 +106,15 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refreshDashboard = useCallback(async () => {
+    setLoadingDashboard(true);
     try {
       const [s, a] = await Promise.all([getStats(), listAssets(20)]);
       setStats(s);
       setAssets(a.assets);
     } catch {
       /* dashboard data is best-effort */
+    } finally {
+      setLoadingDashboard(false);
     }
   }, []);
 
@@ -164,35 +200,42 @@ export default function DashboardPage() {
     });
   }, [assets, typeFilter, searchQuery]);
 
+  const handleExportCsv = useCallback(() => {
+    if (assets.length === 0) {
+      toast.error('No assets to export');
+      return;
+    }
+    const ts = new Date().toISOString().slice(0, 10);
+    downloadCsv(`trace-assets-${ts}.csv`, assets);
+    toast.success('Asset ledger exported', {
+      description: `${assets.length} rows · trace-assets-${ts}.csv`,
+    });
+  }, [assets]);
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f7f8fa] to-[#eef2f7]">
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#f7f8fa] to-[#eef2f7] dark:from-slate-950 dark:to-slate-900">
       {/* Header */}
-      <header className="border-b border-slate-200 bg-white/80 backdrop-blur-md sticky top-0 z-30">
-        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
+      <header className="border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1F3A5F] to-[#2E5C8A] shadow-sm">
               <ShieldCheck className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-[#1F3A5F] leading-tight">Trace</h1>
-              <p className="text-xs text-slate-500 leading-tight hidden sm:block">
+              <h1 className="text-lg font-bold text-[#1F3A5F] dark:text-slate-100 leading-tight">Trace</h1>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight hidden sm:block">
                 The Provenance-First AI Content Engine
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge
-              variant="secondary"
-              className="bg-emerald-50 text-emerald-700 border-emerald-200 hidden sm:flex"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
-              {creator}
-            </Badge>
+            <CreatorSwitcher active={creator} onActiveChange={setCreator} />
+            <ThemeToggle />
             <a
               href="https://github.com/sodiq-code/trace"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:text-[#1F3A5F] hover:border-[#1F3A5F] transition-colors"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#1F3A5F] dark:hover:text-white hover:border-[#1F3A5F] dark:hover:border-slate-500 transition-colors"
               aria-label="View source on GitHub"
             >
               <Github className="h-4 w-4" />
@@ -207,10 +250,10 @@ export default function DashboardPage() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4"
+            className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4"
           >
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-sm text-amber-900">
+            <div className="text-sm text-amber-900 dark:text-amber-200">
               <p className="font-semibold mb-1">Demo mode (read-only)</p>
               <p>
                 This live deployment serves pre-stamped demo assets. Uploading a file returns a
@@ -224,7 +267,7 @@ export default function DashboardPage() {
                 >
                   clone the repo
                 </a>{' '}
-                and run <code className="bg-amber-100 px-1 rounded">trace serve</code> locally.
+                and run <code className="bg-amber-100 dark:bg-amber-900 px-1 rounded">trace serve</code> locally.
               </p>
             </div>
           </motion.div>
@@ -237,25 +280,41 @@ export default function DashboardPage() {
           transition={{ duration: 0.4 }}
           className="text-center space-y-3 pt-2"
         >
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#2E5C8A]/20 bg-[#2E5C8A]/5 px-3 py-1 text-xs font-medium text-[#2E5C8A]">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-[#2E5C8A]/20 bg-[#2E5C8A]/5 dark:border-[#2E5C8A]/30 dark:bg-[#2E5C8A]/10 px-3 py-1 text-xs font-medium text-[#2E5C8A] dark:text-[#5b8ec0]">
             <Lock className="h-3 w-3" />
             C2PA · EU AI Act Article 50
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-[#1F3A5F] leading-tight">
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#1F3A5F] dark:text-slate-100 leading-tight">
             Every AI-generated asset, provenance-tagged in one click.
           </h2>
-          <p className="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">
+          <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
             Cryptographically-verifiable C2PA manifests in under one second. Prove what AI
             generated, when, and how — permanently embedded in the file.
           </p>
+          <div className="flex items-center justify-center gap-3 text-xs text-slate-400 dark:text-slate-500 pt-1">
+            <span className="inline-flex items-center gap-1">
+              <KeyRound className="h-3 w-3" /> ES256 signatures
+            </span>
+            <Separator orientation="vertical" className="h-3" />
+            <span className="inline-flex items-center gap-1">
+              <Cpu className="h-3 w-3" /> c2pa-python 0.90.19
+            </span>
+            <Separator orientation="vertical" className="h-3" />
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck className="h-3 w-3" /> tamper-evident
+            </span>
+          </div>
         </motion.div>
+
+        {/* How it works explainer */}
+        <HowItWorks />
 
         {/* Drop zone — supports multiple files */}
         <Card
           className={`border-2 border-dashed transition-all duration-200 ${
             dragging
-              ? 'border-[#2E5C8A] bg-blue-50/50 scale-[1.01] shadow-md'
-              : 'border-slate-300 bg-white hover:border-[#2E5C8A]/50'
+              ? 'border-[#2E5C8A] bg-blue-50/50 dark:bg-blue-950/20 scale-[1.01] shadow-md'
+              : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-[#2E5C8A]/50'
           }`}
         >
           <CardContent
@@ -271,19 +330,19 @@ export default function DashboardPage() {
               <motion.div
                 animate={stamping ? { rotate: 360 } : {}}
                 transition={stamping ? { duration: 1, repeat: Infinity, ease: 'linear' } : {}}
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#1F3A5F]/5 to-[#2E5C8A]/10"
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-[#1F3A5F]/5 to-[#2E5C8A]/10 dark:from-[#2E5C8A]/20 dark:to-[#1F3A5F]/20"
               >
                 {stamping ? (
                   <Loader2 className="h-8 w-8 text-[#2E5C8A] animate-spin" />
                 ) : (
-                  <UploadCloud className="h-8 w-8 text-[#1F3A5F]" />
+                  <UploadCloud className="h-8 w-8 text-[#1F3A5F] dark:text-[#5b8ec0]" />
                 )}
               </motion.div>
               <div>
-                <p className="text-lg font-semibold text-[#1F3A5F]">
+                <p className="text-lg font-semibold text-[#1F3A5F] dark:text-slate-100">
                   {stamping ? 'Stamping…' : 'Drop AI-generated assets here'}
                 </p>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — under 100MB each
                 </p>
               </div>
@@ -310,9 +369,9 @@ export default function DashboardPage() {
         </Card>
 
         {/* Metadata inputs — manual by design (report §21.2) */}
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-slate-900">
           <CardHeader>
-            <CardTitle className="text-base text-[#1F3A5F] flex items-center gap-2">
+            <CardTitle className="text-base text-[#1F3A5F] dark:text-slate-100 flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
               Asset metadata
               <span className="text-xs font-normal text-slate-400 ml-1">
@@ -321,9 +380,9 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-100 p-3">
+            <div className="flex items-start gap-2 rounded-md bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 p-3">
               <Info className="h-4 w-4 text-[#2E5C8A] shrink-0 mt-0.5" />
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 dark:text-slate-300">
                 Trace does <strong>not</strong> auto-detect the AI model or prompt — this is
                 deliberate (report §21.2). You tell Trace which tool generated the asset and what
                 prompt you used. This metadata is embedded in the C2PA manifest as a permanent,
@@ -332,14 +391,14 @@ export default function DashboardPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-1.5">
-                <Label htmlFor="model" className="text-xs text-slate-600">
+                <Label htmlFor="model" className="text-xs text-slate-600 dark:text-slate-400">
                   AI model <span className="text-red-500">*</span>
                 </Label>
                 <select
                   id="model"
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-slate-700 dark:bg-slate-950"
                 >
                   {AI_MODELS.map((m) => (
                     <option key={m.value} value={m.value}>
@@ -360,7 +419,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="creator" className="text-xs text-slate-600">
+                <Label htmlFor="creator" className="text-xs text-slate-600 dark:text-slate-400">
                   Creator identity
                 </Label>
                 <Input
@@ -370,11 +429,11 @@ export default function DashboardPage() {
                   placeholder="you@channel.com"
                 />
                 <p className="text-xs text-slate-400">
-                  Your email or channel name — recorded as the asset&apos;s creator.
+                  Switch with the button in the header, or type a new one below.
                 </p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="prompt" className="text-xs text-slate-600">
+                <Label htmlFor="prompt" className="text-xs text-slate-600 dark:text-slate-400">
                   Generation prompt
                 </Label>
                 <Input
@@ -402,7 +461,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.08 }}
               >
-                <Card className="bg-white border-emerald-200">
+                <Card className="bg-white dark:bg-slate-900 border-emerald-200 dark:border-emerald-800">
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
                       {result.validation_state.toLowerCase() === 'valid' ? (
@@ -410,7 +469,7 @@ export default function DashboardPage() {
                       ) : (
                         <XCircle className="h-5 w-5 text-[#C0392B]" />
                       )}
-                      <span className="text-[#1F3A5F]">
+                      <span className="text-[#1F3A5F] dark:text-slate-100">
                         {result._demo_mode ? 'Preview (demo mode)' : 'Provenance manifest attached'} —{' '}
                         {result.validation_state}
                       </span>
@@ -424,12 +483,17 @@ export default function DashboardPage() {
                       <Badge variant="outline" className="font-mono text-xs">
                         sha256: {result.file_hash.slice(0, 16)}…
                       </Badge>
+                      {result._demo_mode && (
+                        <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+                          preview only
+                        </Badge>
+                      )}
                     </div>
                     <div className="grid gap-1.5 text-sm">
                       {result.assertions.map((a, j) => (
                         <div key={j} className="flex gap-2">
-                          <span className="text-slate-500 min-w-[120px]">{a.name}:</span>
-                          <span className="font-medium text-slate-900">{a.value}</span>
+                          <span className="text-slate-500 dark:text-slate-400 min-w-[120px]">{a.name}:</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{a.value}</span>
                         </div>
                       ))}
                     </div>
@@ -450,48 +514,82 @@ export default function DashboardPage() {
 
         {/* Compliance Dashboard (report §29.2) */}
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard
-            label="Assets stamped"
-            value={stats?.total_assets ?? '—'}
-            hint="this month"
-            icon={<FileCheck2 className="h-4 w-4" />}
-          />
-          <StatCard
-            label="Compliance rate"
-            value={stats ? `${Math.round(stats.compliance_rate * 100)}%` : '—'}
-            hint="stamped = compliant"
-            accent="green"
-            icon={<ShieldCheck className="h-4 w-4" />}
-          />
-          <StatCard
-            label="Verifications"
-            value={stats?.total_verifications ?? '—'}
-            hint="third-party checks"
-            icon={<Zap className="h-4 w-4" />}
-          />
+          {loadingDashboard ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              <StatCard
+                label="Assets stamped"
+                value={stats?.total_assets ?? '—'}
+                hint="this month"
+                icon={<FileCheck2 className="h-4 w-4" />}
+              />
+              <StatCard
+                label="Compliance rate"
+                value={stats ? `${Math.round(stats.compliance_rate * 100)}%` : '—'}
+                hint="stamped = compliant"
+                accent="green"
+                icon={<ShieldCheck className="h-4 w-4" />}
+              />
+              <StatCard
+                label="Verifications"
+                value={stats?.total_verifications ?? '—'}
+                hint="third-party checks"
+                icon={<Zap className="h-4 w-4" />}
+              />
+            </>
+          )}
         </div>
 
         {/* Compliance overview charts */}
-        <ComplianceCharts assets={assets} stats={stats} />
+        {loadingDashboard ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Skeleton className="h-[260px] rounded-lg" />
+            <Skeleton className="h-[260px] rounded-lg" />
+          </div>
+        ) : (
+          <ComplianceCharts assets={assets} stats={stats} />
+        )}
 
-        {/* Export Monthly Report (report §29.4, Should Work) */}
-        <div className="flex justify-center">
+        {/* Export buttons */}
+        <div className="flex justify-center gap-2 flex-wrap">
           <a href="/api/v1/report" download>
             <Button
               variant="outline"
-              className="bg-white border-[#1F3A5F] text-[#1F3A5F] hover:bg-[#1F3A5F] hover:text-white transition-colors"
+              className="bg-white dark:bg-slate-900 border-[#1F3A5F] text-[#1F3A5F] dark:text-slate-100 dark:border-slate-600 hover:bg-[#1F3A5F] hover:text-white transition-colors"
             >
               <FileDown className="h-4 w-4 mr-2" />
-              Export Monthly Compliance Report (PDF)
+              Export Compliance Report (PDF)
             </Button>
           </a>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={handleExportCsv}
+                  className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export Asset Ledger (CSV)
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Download all {assets.length} stamped assets as a CSV spreadsheet</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         {/* Recent assets with filter + search */}
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-slate-900">
           <CardHeader>
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <CardTitle className="text-base text-[#1F3A5F] flex items-center gap-2">
+              <CardTitle className="text-base text-[#1F3A5F] dark:text-slate-100 flex items-center gap-2">
                 <History className="h-4 w-4" />
                 Recent assets
                 <span className="text-xs font-normal text-slate-400">
@@ -508,38 +606,63 @@ export default function DashboardPage() {
                     className="h-8 w-40 pl-8 text-xs"
                   />
                 </div>
-                <div className="flex items-center gap-1 rounded-lg border border-slate-200 p-0.5">
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 p-0.5">
                   <Filter className="h-3 w-3 text-slate-400 ml-1.5 mr-0.5" />
-                  {TYPE_FILTERS.map((f) => (
-                    <button
-                      key={f.value}
-                      onClick={() => setTypeFilter(f.value)}
-                      className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-                        typeFilter === f.value
-                          ? 'bg-[#1F3A5F] text-white'
-                          : 'text-slate-500 hover:text-[#1F3A5F]'
-                      }`}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
+                  {TYPE_FILTERS.map((f) => {
+                    const Icon = f.icon;
+                    return (
+                      <button
+                        key={f.value}
+                        onClick={() => setTypeFilter(f.value)}
+                        className={`rounded-md px-2 py-1 text-xs font-medium transition-colors inline-flex items-center gap-1 ${
+                          typeFilter === f.value
+                            ? 'bg-[#1F3A5F] text-white'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-[#1F3A5F] dark:hover:text-slate-100'
+                        }`}
+                      >
+                        <Icon className="h-3 w-3" />
+                        {f.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            {assets.length === 0 ? (
-              <p className="text-sm text-slate-500 py-6 text-center">
-                No assets stamped yet. Drop a file above to begin.
-              </p>
+            {loadingDashboard ? (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
+                ))}
+              </div>
+            ) : assets.length === 0 ? (
+              <div className="py-10 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800">
+                  <UploadCloud className="h-6 w-6 text-slate-400" />
+                </div>
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No assets stamped yet</p>
+                <p className="text-xs text-slate-400 mt-1">Drop a file above to attach your first provenance manifest.</p>
+              </div>
             ) : filteredAssets.length === 0 ? (
-              <p className="text-sm text-slate-500 py-6 text-center">
-                No assets match your filter.
-              </p>
+              <div className="py-10 text-center">
+                <p className="text-sm text-slate-500 dark:text-slate-400">No assets match your filter.</p>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="mt-2 text-[#2E5C8A]"
+                  onClick={() => {
+                    setTypeFilter('all');
+                    setSearchQuery('');
+                  }}
+                >
+                  Clear filters
+                </Button>
+              </div>
             ) : (
               <div className="max-h-72 overflow-y-auto -mx-2 trace-scroll">
                 <table className="w-full text-sm">
-                  <thead className="text-xs text-slate-500 uppercase sticky top-0 bg-white">
+                  <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase sticky top-0 bg-white dark:bg-slate-900">
                     <tr>
                       <th className="text-left font-medium px-2 py-2">Asset</th>
                       <th className="text-left font-medium px-2 py-2">Type</th>
@@ -550,8 +673,8 @@ export default function DashboardPage() {
                   </thead>
                   <tbody>
                     {filteredAssets.map((a) => (
-                      <tr key={a.asset_id} className="border-t border-slate-100 hover:bg-slate-50 transition-colors">
-                        <td className="px-2 py-2 font-medium text-slate-900 truncate max-w-[180px]">
+                      <tr key={a.asset_id} className="border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-2 py-2 font-medium text-slate-900 dark:text-slate-100 truncate max-w-[180px]">
                           {a.file_name}
                         </td>
                         <td className="px-2 py-2">
@@ -559,7 +682,7 @@ export default function DashboardPage() {
                             {a.file_type}
                           </Badge>
                         </td>
-                        <td className="px-2 py-2 text-slate-500 hidden sm:table-cell text-xs">
+                        <td className="px-2 py-2 text-slate-500 dark:text-slate-400 hidden sm:table-cell text-xs">
                           {new Date(a.created_at).toLocaleString()}
                         </td>
                         <td className="px-2 py-2">
@@ -585,8 +708,8 @@ export default function DashboardPage() {
         </Card>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white/80 backdrop-blur-sm mt-auto">
-        <div className="mx-auto max-w-5xl px-4 py-4 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm mt-auto">
+        <div className="mx-auto max-w-5xl px-4 py-4 text-center text-xs text-slate-500 dark:text-slate-400">
           <p className="mb-1">
             Trace generates cryptographically-verifiable C2PA manifests aligned with EU AI Act
             Article 50. Trace does not constitute legal advice.
@@ -622,14 +745,14 @@ function StatCard({
   icon?: React.ReactNode;
 }) {
   return (
-    <Card className="bg-white hover:shadow-md transition-shadow">
+    <Card className="bg-white dark:bg-slate-900 hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide">{label}</p>
           {icon && (
             <span
               className={`flex h-7 w-7 items-center justify-center rounded-md ${
-                accent === 'green' ? 'bg-emerald-50 text-[#2E8B57]' : 'bg-[#1F3A5F]/5 text-[#1F3A5F]'
+                accent === 'green' ? 'bg-emerald-50 text-[#2E8B57] dark:bg-emerald-950/40' : 'bg-[#1F3A5F]/5 text-[#1F3A5F] dark:bg-[#2E5C8A]/20 dark:text-[#5b8ec0]'
               }`}
             >
               {icon}
@@ -638,12 +761,27 @@ function StatCard({
         </div>
         <p
           className={`text-2xl font-bold mt-1.5 ${
-            accent === 'green' ? 'text-[#2E8B57]' : 'text-[#1F3A5F]'
+            accent === 'green' ? 'text-[#2E8B57]' : 'text-[#1F3A5F] dark:text-slate-100'
           }`}
         >
           {value}
         </p>
         {hint && <p className="text-xs text-slate-400 mt-0.5">{hint}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <Card className="bg-white dark:bg-slate-900">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-7 w-7 rounded-md" />
+        </div>
+        <Skeleton className="h-7 w-16 mt-3" />
+        <Skeleton className="h-3 w-24 mt-2" />
       </CardContent>
     </Card>
   );
