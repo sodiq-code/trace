@@ -1,0 +1,47 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# --- Trace runtime artifacts (never commit user data / keys / db) ---
+*.db
+*.sqlite
+*.sqlite3
+trace.db
+data/
+uploads/
+stamped/
+output/
+validate/
+credentials/local/
+
+# Bundled default signing fixtures are committed (public demo creds);
+# locally-generated creds live under ~/.trace/ (outside the repo).
+
+# --- Node / web (Day 2) ---
+node_modules/
+.next/
+out/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp

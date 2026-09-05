@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests with coverage
+        run: pytest --cov=tracekit --cov-report=term-missing
+
+      - name: Enforce Stamper/Verifier coverage gate (≥80%)
+        run: |
+          pytest --cov=tracekit --cov-report=json -q
+          python - <<'PY'
+          import json
+          cov = json.load(open("coverage.json"))
+          files = cov["files"]
+          def pct(path): return files[path]["summary"]["percent_covered"]
+          stamper = pct("python/trace/stamper.py")
+          verifier = pct("python/trace/verifier.py")
+          print(f"stamper: {stamper:.1f}%  verifier: {verifier:.1f}%")
+          assert stamper >= 80, f"stamper coverage {stamper:.1f}% < 80%"
+          assert verifier >= 80, f"verifier coverage {verifier:.1f}% < 80%"
+          print("coverage gate PASSED")
+          PY
