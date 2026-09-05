@@ -5,10 +5,12 @@ Surface (report Sec 25.2):
     trace stamp  <file> [--model --prompt --creator --out]
     trace verify <file>                          verify a stamped asset
     trace list   [--limit N]                     list recently stamped assets
+    trace serve  [--host --port]                 start the FastAPI HTTP API
     trace --version
 
 Day 1 delivers ``init`` / ``stamp`` / ``verify`` / ``list``.
-``stamp-dir`` (batch) is a Day 2 Should-Work item.
+Day 2 adds ``serve`` (the FastAPI Verifier + Stamper HTTP API).
+``stamp-dir`` (batch) is a Should-Work item.
 """
 from __future__ import annotations
 
@@ -178,6 +180,33 @@ def cmd_list(args: argparse.Namespace) -> int:
 # Argument parser
 # ---------------------------------------------------------------------------
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    # Import here so `trace stamp` / `trace verify` don't pay the FastAPI import cost.
+    import uvicorn
+    from .api.app import app
+
+    _box(
+        f"Trace HTTP API starting on http://{args.host}:{args.port}",
+        [
+            f"docs:    http://{args.host}:{args.port}/docs",
+            f"stamp:   POST http://{args.host}:{args.port}/v1/stamp",
+            f"verify:  GET  http://{args.host}:{args.port}/v1/verify/<asset_id>",
+            f"card:    GET  http://{args.host}:{args.port}/card/<asset_id>",
+            f"home:    {config.trace_home()}",
+            "",
+            "Press Ctrl+C to stop.",
+        ],
+    )
+    uvicorn.run(
+        "tracekit.api.app:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+        log_level="info",
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="trace",
@@ -215,6 +244,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_list = sub.add_parser("list", help="list recently stamped assets")
     p_list.add_argument("--limit", type=int, default=20, help="max rows (default 20)")
     p_list.set_defaults(func=cmd_list)
+
+    # serve (Day 2 — FastAPI HTTP API)
+    p_serve = sub.add_parser("serve", help="start the FastAPI HTTP API (Stamper + Verifier)")
+    p_serve.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1)")
+    p_serve.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")
+    p_serve.add_argument("--reload", action="store_true", help="auto-reload on file changes (dev)")
+    p_serve.set_defaults(func=cmd_serve)
 
     return p
 

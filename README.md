@@ -82,6 +82,38 @@ trace list
 | `trace stamp <file> [--model --prompt --creator]` | Attach a C2PA provenance manifest to `<file>` |
 | `trace verify <file> [--json]` | Verify a stamped asset's manifest integrity |
 | `trace list [--limit N]` | List recently stamped assets |
+| `trace serve [--host --port]` | Start the FastAPI HTTP API (Stamper + Verifier + Card) |
+
+## HTTP API
+
+Start the service with `trace serve` (or `make serve-start` for a detached
+background process), then:
+
+| Endpoint | Description |
+| --- | --- |
+| `POST /v1/stamp` | Stamp an uploaded asset (multipart form: file, model, prompt, creator) |
+| `GET /v1/verify/<asset_id>` | JSON: claim chain + signature validity (Validation Test 2) |
+| `GET /v1/manifest/<asset_id>` | JSON: raw C2PA manifest + creator-readable assertions |
+| `GET /v1/assets` | Recent assets (dashboard list) |
+| `GET /v1/stats` | Dashboard stats: total assets, compliance rate, verifications |
+| `GET /card/<asset_id>` | HTML Provenance Card (public URL, Validation Test 3) |
+| `GET /docs` | Automatic OpenAPI documentation |
+
+## Web dashboard
+
+The Next.js dashboard (`web/`) provides a drag-and-drop stamping interface
+and the public Provenance Card page:
+
+```bash
+# Terminal 1 — start the FastAPI API
+trace serve --port 8000
+
+# Terminal 2 — start the dashboard
+cd web && npm install && npm run dev   # http://localhost:3000
+```
+
+Open `http://localhost:3000`, drop a PNG into the dropzone, and watch the
+Provenance Card appear with a green "Cryptographic signature: VALID" badge.
 
 ---
 
@@ -125,20 +157,26 @@ trace/
 ├── python/
 │   ├── trace/                 # the package (importable as `tracekit`)
 │   │   ├── stamper.py         # C2PA stamping (wraps c2pa-python)
-│   │   ├── verifier.py        # local manifest verification
+│   │   ├── verifier.py        # manifest verification (local + HTTP)
 │   │   ├── cli.py             # `trace` command-line entry point
 │   │   ├── db.py              # SQLite persistence (4 entities)
 │   │   ├── keys.py            # signing-credential provisioning
 │   │   ├── config.py          # paths + constants
 │   │   ├── schemas.py         # typed data models
+│   │   ├── api/               # FastAPI HTTP service (app.py + card template)
 │   │   └── credentials/       # bundled default ES256 signing fixtures
-│   └── tests/                 # pytest suite (25 tests, 92% coverage)
-├── web/                       # Next.js dashboard (Day 2)
+│   └── tests/                 # pytest suite (39 tests, 92% coverage)
+├── web/                       # Next.js dashboard + Provenance Card
+│   ├── src/app/page.tsx       # dashboard (drag-and-drop + compliance stats)
+│   ├── src/app/card/[id]/     # Provenance Card page (public URL)
+│   ├── src/lib/trace-api.ts   # typed API client
+│   └── src/components/ui/     # shadcn/ui components (button, card, badge, …)
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   └── DEMO_SCRIPT.md
 ├── scripts/
 │   ├── setup.sh
+│   ├── serve.sh               # start/stop the FastAPI service detached
 │   └── demo.sh
 ├── samples/                   # demo assets
 ├── Makefile

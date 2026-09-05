@@ -25,7 +25,7 @@ jobs:
       - name: Run tests with coverage
         run: pytest --cov=tracekit --cov-report=term-missing
 
-      - name: Enforce Stamper/Verifier coverage gate (≥80%)
+      - name: Enforce Stamper/Verifier/API coverage gate (≥80%)
         run: |
           pytest --cov=tracekit --cov-report=json -q
           python - <<'PY'
@@ -35,8 +35,11 @@ jobs:
           def pct(path): return files[path]["summary"]["percent_covered"]
           stamper = pct("python/trace/stamper.py")
           verifier = pct("python/trace/verifier.py")
-          print(f"stamper: {stamper:.1f}%  verifier: {verifier:.1f}%")
+          api = pct("python/trace/api/app.py")
+          total = cov["totals"]["percent_covered"]
+          print(f"stamper: {stamper:.1f}%  verifier: {verifier:.1f}%  api: {api:.1f}%  total: {total:.1f}%")
           assert stamper >= 80, f"stamper coverage {stamper:.1f}% < 80%"
           assert verifier >= 80, f"verifier coverage {verifier:.1f}% < 80%"
+          assert api >= 80, f"api coverage {api:.1f}% < 80%"
           print("coverage gate PASSED")
           PY
