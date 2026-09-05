@@ -26,10 +26,13 @@ htmlcov/
 trace.db
 data/
 uploads/
-stamped/
-output/
+# Allow committed demo stamped assets (samples/stamped/)
 validate/
 credentials/local/
+
+# Stamped output from local runs (but keep samples/stamped/)
+stamped/
+!samples/stamped/
 
 # Bundled default signing fixtures are committed (public demo creds);
 # locally-generated creds live under ~/.trace/ (outside the repo).
