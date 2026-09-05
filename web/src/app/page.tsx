@@ -11,6 +11,7 @@ import {
   ExternalLink,
   Sparkles,
   History,
+  FileDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -263,6 +264,16 @@ export default function DashboardPage() {
             value={stats?.total_verifications ?? '—'}
             hint="third-party checks"
           />
+        </div>
+
+        {/* Export Monthly Report (report Sec 29.4, Should Work) */}
+        <div className="flex justify-center">
+          <a href="/api/v1/report" download>
+            <Button variant="outline" className="bg-white border-[#1F3A5F] text-[#1F3A5F] hover:bg-[#1F3A5F] hover:text-white">
+              <FileDown className="h-4 w-4 mr-2" />
+              Export Monthly Compliance Report (PDF)
+            </Button>
+          </a>
         </div>
 
         {/* Recent assets */}

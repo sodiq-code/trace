@@ -83,6 +83,7 @@ EXT_TO_FILETYPE: Final[dict[str, str]] = {
     ".tiff": "image",
     ".tif": "image",
     ".gif": "image",
+    ".svg": "image",
     # audio
     ".wav": "audio",
     ".mp3": "audio",
@@ -106,6 +107,7 @@ EXT_TO_MIME: Final[dict[str, str]] = {
     ".tiff": "image/tiff",
     ".tif": "image/tiff",
     ".gif": "image/gif",
+    ".svg": "image/svg+xml",
     ".wav": "audio/wav",
     ".mp3": "audio/mpeg",
     ".flac": "audio/flac",
@@ -117,7 +119,7 @@ EXT_TO_MIME: Final[dict[str, str]] = {
 }
 
 SUPPORTED_IMAGE_EXTS: Final[tuple[str, ...]] = (
-    ".png", ".jpg", ".jpeg", ".webp", ".avif",
+    ".png", ".jpg", ".jpeg", ".webp", ".avif", ".svg",
 )
 SUPPORTED_AUDIO_EXTS: Final[tuple[str, ...]] = (".wav", ".mp3", ".flac")
 SUPPORTED_VIDEO_EXTS: Final[tuple[str, ...]] = (".mp4", ".mov")

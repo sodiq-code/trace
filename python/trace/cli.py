@@ -6,11 +6,8 @@ Surface (report Sec 25.2):
     trace verify <file>                          verify a stamped asset
     trace list   [--limit N]                     list recently stamped assets
     trace serve  [--host --port]                 start the FastAPI HTTP API
+    trace report [--out FILE]                    generate Monthly Compliance Report PDF
     trace --version
-
-Day 1 delivers ``init`` / ``stamp`` / ``verify`` / ``list``.
-Day 2 adds ``serve`` (the FastAPI Verifier + Stamper HTTP API).
-``stamp-dir`` (batch) is a Should-Work item.
 """
 from __future__ import annotations
 
@@ -180,6 +177,35 @@ def cmd_list(args: argparse.Namespace) -> int:
 # Argument parser
 # ---------------------------------------------------------------------------
 
+def cmd_report(args: argparse.Namespace) -> int:
+    from .report import generate_compliance_report
+
+    cfg = keys.load_creator_config() or {}
+    email = args.email or cfg.get("creator_email", "unknown@trace.local")
+    channel = args.channel or cfg.get("channel_name", "Trace Creator")
+
+    db = Database()
+    try:
+        out = args.out or str(config.trace_home() / "compliance-report.pdf")
+        pdf_bytes = generate_compliance_report(
+            db=db, creator_email=email, channel_name=channel, output_path=out,
+        )
+        _box(
+            "Monthly Compliance Report generated",
+            [
+                f"creator:  {email}",
+                f"channel:  {channel}",
+                f"assets:   {db.count_assets()}",
+                f"verifs:   {db.count_verifications()}",
+                f"output:   {out}",
+                f"size:     {len(pdf_bytes)} bytes",
+            ],
+        )
+    finally:
+        db.close()
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     # Import here so `trace stamp` / `trace verify` don't pay the FastAPI import cost.
     import uvicorn
@@ -251,6 +277,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")
     p_serve.add_argument("--reload", action="store_true", help="auto-reload on file changes (dev)")
     p_serve.set_defaults(func=cmd_serve)
+
+    # report (Should Work — Monthly Compliance Report PDF)
+    p_report = sub.add_parser("report", help="generate Monthly Compliance Report PDF")
+    p_report.add_argument("--out", default=None, help="output file path (default ~/.trace/compliance-report.pdf)")
+    p_report.add_argument("--email", default=None, help="override creator email")
+    p_report.add_argument("--channel", default=None, help="override channel name")
+    p_report.set_defaults(func=cmd_report)
 
     return p
 

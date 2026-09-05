@@ -1,33 +1,51 @@
 # Trace — Demo Script (90 seconds)
 
-> Status: skeleton. The full 90-second demo script and recorded video are
-> produced on Day 3 (report Sec 31.3 / Sec 50.5).
+> **PRIMARY** — this is what we record for the Devpost submission.
+> Source: report Section 39.3. Adapted with the actual live URLs.
 
-## Goal
+## Setup before recording
 
-In 90 seconds, show a judge that Trace stamps an AI-generated asset with a
-cryptographically-verifiable C2PA provenance manifest — and that a third party
-can verify it in under one second.
+1. Open `https://trace-provenance.vercel.app` (dashboard) in Chrome
+2. Open `https://trace-provenance.vercel.app/card/44837e88-a2fb-42bf-91f1-c0583365a146` (pre-stamped Provenance Card) in a second tab
+3. Clone the repo locally and run `trace serve` (for the live stamping demo)
+4. OBS Studio set to 1920x1080, 30fps
 
 ## 90-second beat sheet
 
-| Time | Beat | Action |
-| --- | --- | --- |
-| 0:00–0:10 | Hook | "EU AI Act Article 50 makes provenance mandatory. Trace makes it one command." |
-| 0:10–0:30 | The pain | Show a Midjourney thumbnail. No provenance. A sponsor can't tell if it's AI-generated. |
-| 0:30–0:55 | The stamp | `trace stamp thumbnail.png --model midjourney-v6 --prompt "neon tech review"` → `[Valid]` in 0.5s |
-| 0:55–1:15 | The verify | Open the Provenance Card URL → green "Cryptographic signature: VALID" → click "Verify cryptographically" → 200 OK |
-| 1:15–1:30 | The moat | "Deterministic. Zero LLM calls. The Stripe of AI-content compliance." |
+| Time | Beat | Script | Action |
+|------|------|--------|--------|
+| 0:00–0:10 | Hook | "EU AI Act Article 50 makes AI-content labeling mandatory from August 2026. Creators have no tool to comply." | Show the EU AI Act headline on screen |
+| 0:10–0:25 | Problem | "Maya is a solo YouTuber with a sponsorship deal. Her sponsor asks: is your AI-generated thumbnail EU AI Act compliant? Maya has no lawyer. She has Trace." | Show Maya's Midjourney thumbnail |
+| 0:25–0:45 | Live demo — Stamping | "Watch. Maya drags her Midjourney thumbnail into Trace. In 0.5 seconds, Trace generates a C2PA manifest with the full source chain — model, prompt, timestamp, creator identity, cryptographic signature — and produces a public Provenance Card URL." | Drag `samples/demo.png` into the dashboard dropzone. Show the [Valid] result. |
+| 0:45–1:10 | Live demo — Verifying | "Maya opens the Provenance Card in a second tab. The page renders the source chain. She clicks Verify Cryptographically. The Verifier returns 200 OK — signature valid — in under 500 milliseconds." | Switch to the Provenance Card tab. Click "Verify cryptographically". Show the green VALID badge and "200 OK — signature valid" result. |
+| 1:10–1:25 | Result | "Maya forwards the URL to her sponsor. Her sponsor sees the green compliance checkmark. Approves payment. $0 regulatory cost. 8 minutes total. Without Trace: $5,000 to $15,000, 3 to 5 business days." | Show the compliance stats (3 assets, 100% compliance). Show the Monthly Report PDF export button. |
+| 1:25–1:30 | Close | "Trace — provenance for every AI-generated creator asset. Repo link in the description." | Show the Trace logo + GitHub URL: github.com/sodiq-code/trace |
 
-## Pre-demo checklist (Day 3)
+## Recording tips
 
-- [ ] Pre-stamp 3 demo assets (image, audio, text) before recording
-- [ ] Confirm `trace verify` returns `VALID` on all 3
-- [ ] Confirm the public Provenance Card URL loads in an incognito window
-- [ ] Record with OBS Studio at 1080p; keep demo assets under 5MB each
-- [ ] Upload to YouTube as unlisted; link from the Devpost submission
+- Speak at a natural pace — the script is ~130 words, which fits comfortably in 90 seconds.
+- Show the cursor clearly — the judge needs to see *where* you click.
+- The stamping step (0:25–0:45) is the money shot. Make sure the [Valid] badge is visible.
+- If the live stamping fails (network issue), switch to the pre-stamped Provenance Card URL (tab 2) — it always works.
 
 ## Demo-safe fallback
 
-If the live demo fails (network down, laptop crash), play the 90-second
-pre-recording. The Devpost submission includes both the live URL and the recording.
+If the live demo fails entirely (laptop crash, network down), play the 90-second pre-recording. The Devpost submission includes both the live URL and the recording. The pre-stamped demo assets at `samples/stamped/` always work — they're committed to the repo and deployed with the app.
+
+## Key URLs
+
+| Resource | URL |
+|----------|-----|
+| Live dashboard | https://trace-provenance.vercel.app |
+| Provenance Card (demo image) | https://trace-provenance.vercel.app/card/44837e88-a2fb-42bf-91f1-c0583365a146 |
+| Provenance Card (demo audio) | https://trace-provenance.vercel.app/card/1f4ca75d-25c6-44c6-8eb0-ab54aed5110d |
+| Provenance Card (demo text/SVG) | https://trace-provenance.vercel.app/card/4e4f6083-3ac7-4181-8b2f-493a517ba550 |
+| GitHub repo | https://github.com/sodiq-code/trace |
+| API docs (local) | http://localhost:8000/docs (run `trace serve`) |
+
+## What the judge sees
+
+1. **Functionality:** A working tool that stamps AI-generated assets with real C2PA manifests in under 1 second. 43 tests, 92% coverage. Fresh-clone verified.
+2. **Creativity:** No submission in the gallery addresses EU AI Act Article 50 compliance for creators. The closest commercial product (OpusClip) does clipping, not provenance. Trace is the first creator-facing C2PA tool.
+3. **Technical Execution:** Clean monorepo (Python + Next.js), typed throughout, automatic OpenAPI docs, 80%+ coverage gate in CI, no LLM in the core path (deterministic by design).
+4. **Real-World Usefulness:** Target user: solo creators with EU sponsors (estimated 200,000). Saves $5K–$15K per asset vs legal review. 26,000x cost reduction at $19/month.

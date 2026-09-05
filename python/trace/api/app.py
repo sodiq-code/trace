@@ -279,6 +279,29 @@ def create_app() -> FastAPI:
         }
 
     # ------------------------------------------------------------------
+    # GET /v1/report  — Monthly Compliance Report PDF (report Sec 29.4)
+    # ------------------------------------------------------------------
+    @app.get("/v1/report", tags=["report"])
+    def compliance_report():
+        from ..report import generate_compliance_report
+        from fastapi.responses import Response
+
+        cfg = load_creator_config() or {}
+        db = get_db()
+        pdf_bytes = generate_compliance_report(
+            db=db,
+            creator_email=cfg.get("creator_email", "maya@channel.com"),
+            channel_name=cfg.get("channel_name", "Maya Tech Reviews"),
+        )
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": 'attachment; filename="trace-compliance-report.pdf"',
+            },
+        )
+
+    # ------------------------------------------------------------------
     # GET /card/<asset_id>  — HTML Provenance Card (report Sec 29.3 + Sec 25.1)
     # ------------------------------------------------------------------
     @app.get("/card/{asset_id}", tags=["card"], response_class=HTMLResponse)

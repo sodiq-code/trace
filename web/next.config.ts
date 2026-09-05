@@ -3,15 +3,17 @@ import type { NextConfig } from "next";
 const TRACE_API_PORT = process.env.TRACE_API_PORT || "8000";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
   typescript: {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  // Proxy /api/v1/* → the Trace FastAPI service (localhost:8000).
-  // This keeps the browser on same-origin (no CORS, no absolute URLs) and
-  // works identically in the sandbox (behind Caddy) and in local dev.
+  // In development: proxy /api/v1/* to the local FastAPI service (port 8000).
+  // In production (Vercel): Python serverless functions handle /api/* same-origin,
+  // so no rewrite is needed.
   async rewrites() {
+    if (process.env.NODE_ENV === "production") {
+      return [];
+    }
     return [
       {
         source: "/api/v1/:path*",
