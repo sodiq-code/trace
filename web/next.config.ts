@@ -7,9 +7,17 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Raise the request body size limit so large media uploads (e.g. a 9 MB MP4)
+  // reach the stamp route instead of hitting Vercel's default 4.5 MB cap that
+  // returns HTTP 413 "Payload Too Large". 50 MB covers the demo's stated
+  // "under 100MB each" ceiling while staying within Vercel's max.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "50mb",
+    },
+  },
   // In development: proxy /api/v1/* to the local FastAPI service (port 8000).
-  // In production (Vercel): Python serverless functions handle /api/* same-origin,
-  // so no rewrite is needed.
+  // In production (Vercel): the Next.js API routes proxy to the public backend.
   async rewrites() {
     if (process.env.NODE_ENV === "production") {
       return [];

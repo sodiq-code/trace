@@ -7,7 +7,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { postTraceForm } from '@/lib/trace-proxy';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
+// Allow large media uploads (video files can be tens of MB). This raises the
+// route body size limit above Vercel's 4.5 MB default so a 9 MB MP4 does not
+// trigger HTTP 413 "Payload Too Large".
+export const maxBodySize = '50mb';
 
 function detectFileType(filename: string): string {
   const ext = filename.toLowerCase().split('.').pop() || '';
@@ -30,7 +34,7 @@ export async function POST(request: NextRequest) {
   const prompt = (formData.get('prompt') as string) || '';
   const creator = (formData.get('creator') as string) || 'unknown@trace.local';
 
-  // Try the local FastAPI service for real C2PA stamping.
+  // Try the Trace backend for real C2PA stamping.
   const result = await postTraceForm<any>('/v1/stamp', formData);
   if (result) {
     return NextResponse.json(result.data, { status: result.status });
@@ -58,6 +62,6 @@ export async function POST(request: NextRequest) {
       { name: 'Prompt', value: prompt || '(not specified)' },
     ],
     _demo_mode: true,
-    _note: 'Demo mode: preview response. For real C2PA stamping, run "trace serve" locally.',
+    _note: 'Backend offline: preview response. For real C2PA stamping, run "trace serve" locally.',
   }, { status: 201 });
 }

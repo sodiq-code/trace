@@ -127,7 +127,25 @@ export default function DashboardPage() {
 
   // --- Staging logic: files are staged, not immediately stamped ---
   const addFiles = useCallback((fileList: File[]) => {
-    const newStaged: StagedFile[] = fileList.map((file) => {
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB — matches the server limit
+    const accepted: File[] = [];
+    const rejected: { name: string; size: number }[] = [];
+    for (const file of fileList) {
+      if (file.size > MAX_FILE_SIZE) {
+        rejected.push({ name: file.name, size: file.size });
+      } else {
+        accepted.push(file);
+      }
+    }
+    if (rejected.length > 0) {
+      toast.error(`${rejected.length} file${rejected.length === 1 ? '' : 's'} too large`, {
+        description: rejected
+          .map((f) => `${f.name} (${(f.size / (1024 * 1024)).toFixed(1)} MB)`)
+          .join(', ') + ' — the 50 MB limit was exceeded.',
+      });
+    }
+    if (accepted.length === 0) return;
+    const newStaged: StagedFile[] = accepted.map((file) => {
       const fileType = detectFileType(file);
       return {
         id: `${file.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -369,7 +387,7 @@ export default function DashboardPage() {
                   {stamping ? 'Stamping…' : 'Drop AI-generated assets here'}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — under 100MB each.
+                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — up to 50 MB each.
                   You can mix image, audio, and video; each gets its own model.
                 </p>
               </div>
