@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python312", "gcc"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt", "pip install -e ."]
+
+[start]
+cmd = "trace init --email maya@channel.com --channel 'Maya Tech Reviews' --force && trace serve --host 0.0.0.0 --port ${PORT:-8000}"
