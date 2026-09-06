@@ -148,11 +148,11 @@ export async function stampAsset(
       const text = await res.text().catch(() => "");
       if (text.includes("EntityTooLarge") || text.includes("payload size")) {
         throw new Error(
-          `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB. Please compress the video or use a smaller file.`,
+          `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 4.5 MB. Please compress the video or use a smaller file.`,
         );
       }
       throw new Error(
-        `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB.`,
+        `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 4.5 MB.`,
       );
     }
     // Any other error (e.g. 400 invalid format): surface it.
@@ -169,7 +169,7 @@ export async function stampAsset(
   const res = await fetch("/api/v1/stamp", { method: "POST", body: form });
   if (res.status === 413) {
     throw new Error(
-      `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB. Please compress the video or use a smaller file.`,
+      `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 4.5 MB. Please compress the video or use a smaller file.`,
     );
   }
   return jsonOrThrow<StampResponse>(res);
