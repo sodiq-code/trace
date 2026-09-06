@@ -394,7 +394,7 @@ export default function DashboardPage() {
                   {stamping ? 'Stamping…' : 'Drop AI-generated assets here'}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — up to 100 MB each (Vercel limit — run locally for larger files).
+                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — up to 100 MB each.
                   You can mix image, audio, and video; each gets its own model.
                 </p>
               </div>
