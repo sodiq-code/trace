@@ -1,20 +1,15 @@
 /**
  * Trace API client — typed wrapper around the Trace FastAPI service.
  *
- * Upload strategy:
- *  - LOCAL DEV: the browser calls same-origin `/api/v1/*`. Next.js rewrites
- *    that to the local FastAPI service on port 8000 (see next.config.ts).
- *    The Route Handler is not size-limited, so large files work.
- *  - PRODUCTION (Vercel): if `NEXT_PUBLIC_TRACE_API_URL` is set, the browser
- *    uploads DIRECTLY to the public Trace backend (the gateway-exposed
- *    FastAPI service). This bypasses Vercel's 4.5 MB Route Handler body
- *    limit entirely — Vercel Hobby functions cannot have their body limit
- *    raised above 4.5 MB, so direct-to-backend is the only way to support
- *    large media (video) uploads. The backend has CORS open to all origins
- *    (the verifier is meant to be publicly callable).
- *  - FALLBACK: if the direct backend call fails (e.g. CORS or network), the
- *    client retries via the same-origin `/api/v1/stamp` Route Handler, which
- *    will either proxy to the backend (small files) or return a demo preview.
+ * Upload strategy (bulletproof, single-origin when possible):
+ *  - PREFERRED: the dashboard is served from the SAME origin as the FastAPI
+ *    backend (e.g. via the gateway). All calls go to same-origin `/v1/*`.
+ *    No CORS, no body-size limit beyond the gateway's 32 MB cap, no cache
+ *    issues. This is the architecture the blueprint §28.3 describes.
+ *  - FALLBACK: if `NEXT_PUBLIC_TRACE_API_URL` is set (Vercel deployment),
+ *    the browser uploads directly to that public backend. This bypasses
+ *    Vercel's 4.5 MB Route Handler limit.
+ *  - LAST RESORT: same-origin `/api/v1/*` Route Handler (local dev proxy).
  */
 
 export interface StampResponse {
@@ -79,16 +74,26 @@ export interface StatsResponse {
   compliance_rate: number;
 }
 
-/** Same-origin API base (works in both dev and prod via Route Handlers). */
-const API_BASE = "/api/v1";
-
 /**
- * Public backend URL for direct browser→backend uploads in production.
- * Set as NEXT_PUBLIC_TRACE_API_URL on Vercel. Must include the gateway's
- * port-transform query, e.g.:
- *   https://host.example/v1?XTransformPort=8000
+ * The API base. Priority:
+ *  1. NEXT_PUBLIC_TRACE_API_URL (explicit public backend — Vercel deploys)
+ *  2. "" (empty string) → same-origin relative `/v1/*` (when served from
+ *     FastAPI itself, e.g. via the gateway).
+ *  3. Same-origin `/api/v1/*` Route Handler fallback (local dev).
+ *
+ * We detect #2 at runtime: if the page is NOT on a vercel.app domain and
+ * NEXT_PUBLIC_TRACE_API_URL is unset, assume same-origin /v1/*.
  */
 const PUBLIC_BACKEND = process.env.NEXT_PUBLIC_TRACE_API_URL || "";
+const IS_VERCEL =
+  typeof window !== "undefined" && window.location.hostname.includes("vercel.app");
+
+/** The base for direct backend calls. Empty = use same-origin relative. */
+const BACKEND_BASE = PUBLIC_BACKEND || (IS_VERCEL ? "" : "");
+/** The gateway port-transform query (if any). */
+const PORT_QUERY = PUBLIC_BACKEND.includes("XTransformPort")
+  ? PUBLIC_BACKEND.split("?")[1]
+  : "";
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -105,21 +110,23 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
 }
 
 /**
- * Resolve a public-backend URL for a given V1 path, preserving the gateway's
- * port-transform query. Returns "" if no public backend is configured.
+ * Build the full URL for a V1 backend path.
+ * - If a public backend is configured, append the path + port-transform query.
+ * - Otherwise, return a same-origin relative path ("/v1/stats").
  */
-function resolvePublicUrl(path: string): string {
-  if (!PUBLIC_BACKEND) return "";
-  // PUBLIC_BASE looks like "https://host/v1?XTransformPort=8000".
-  // path looks like "/v1/stamp". Strip the leading "/v1" and merge queries.
-  const trimmed = path.replace(/^\/v1/, "");
-  const [baseUrl, baseQuery] = PUBLIC_BACKEND.split("?");
-  const [p, q] = trimmed.split("?");
-  const parts: string[] = [];
-  if (baseQuery) parts.push(baseQuery);
-  if (q) parts.push(q);
-  const qs = parts.length ? `?${parts.join("&")}` : "";
-  return `${baseUrl}${p}${qs}`;
+function url(path: string): string {
+  if (PUBLIC_BACKEND) {
+    const [baseUrl, baseQuery] = PUBLIC_BACKEND.split("?");
+    const trimmed = path.replace(/^\/v1/, "");
+    const [p, q] = trimmed.split("?");
+    const parts: string[] = [];
+    if (baseQuery) parts.push(baseQuery);
+    if (q) parts.push(q);
+    const qs = parts.length ? `?${parts.join("&")}` : "";
+    return `${baseUrl}${p}${qs}`;
+  }
+  // Same-origin relative (works when served from FastAPI via the gateway).
+  return path;
 }
 
 /** Stamp an uploaded file with a C2PA provenance manifest. */
@@ -133,52 +140,33 @@ export async function stampAsset(
   if (opts.prompt) form.append("prompt", opts.prompt);
   if (opts.creator) form.append("creator", opts.creator);
 
-  // Production: try a direct browser→backend upload first. This bypasses
-  // Vercel's 4.5 MB Route Handler body limit, so large media (video) works
-  // up to the public backend's own limit (32 MB at the gateway).
-  const publicUrl = resolvePublicUrl("/v1/stamp");
-  if (publicUrl) {
-    try {
-      const res = await fetch(publicUrl, { method: "POST", body: form });
-      if (res.ok) return jsonOrThrow<StampResponse>(res);
-      // 413 / EntityTooLarge from the backend or gateway: the file is too
-      // large. Surface a clear error — do NOT fall through to the Vercel
-      // Route Handler (it has an even smaller 4.5 MB limit and would 413
-      // too, producing a confusing "File too large" for an undersized file).
-      if (res.status === 413) {
-        const text = await res.text().catch(() => "");
-        if (text.includes("EntityTooLarge") || text.includes("payload size")) {
-          throw new Error(
-            `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB. Please compress the video or use a smaller file.`,
-          );
-        }
+  // Try the backend directly (public URL or same-origin /v1).
+  try {
+    const res = await fetch(url("/v1/stamp"), { method: "POST", body: form });
+    if (res.ok) return jsonOrThrow<StampResponse>(res);
+    if (res.status === 413) {
+      const text = await res.text().catch(() => "");
+      if (text.includes("EntityTooLarge") || text.includes("payload size")) {
         throw new Error(
-          `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB.`,
+          `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB. Please compress the video or use a smaller file.`,
         );
       }
-      // Any OTHER non-ok status (e.g. 400 invalid file format, 500 server
-      // error): surface the backend's real error. Do NOT fall through to the
-      // Route Handler — that would hide the real cause and may 413.
-      return jsonOrThrow<StampResponse>(res);
-    } catch (err) {
-      // Only fall through to the Route Handler on a genuine NETWORK/CORS
-      // failure (the backend was unreachable). A TypeError means the fetch
-      // itself failed (CORS, DNS, connection refused) — not an HTTP response.
-      // HTTP error responses (4xx/5xx) were already handled above and either
-      // threw "File too large" or called jsonOrThrow (which throws).
-      if (err instanceof Error && err.message.includes("File too large")) throw err;
-      if (err instanceof TypeError) {
-        // Network/CORS error — fall through to same-origin proxy (local dev).
-      } else {
-        // An HTTP error response from the backend (e.g. "400: c2pa signing
-        // failed"). Re-throw it so the user sees the real cause.
-        throw err;
-      }
+      throw new Error(
+        `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB.`,
+      );
     }
+    // Any other error (e.g. 400 invalid format): surface it.
+    return jsonOrThrow<StampResponse>(res);
+  } catch (err) {
+    // Only fall through to the Route Handler on a genuine network failure
+    // (TypeError = fetch itself failed, e.g. CORS/DNS). HTTP errors were
+    // already handled above and threw.
+    if (err instanceof Error && err.message.includes("File too large")) throw err;
+    if (!(err instanceof TypeError)) throw err;
   }
 
-  // Fallback (local dev, or backend unreachable): same-origin Route Handler.
-  const res = await fetch(`${API_BASE}/stamp`, { method: "POST", body: form });
+  // Last-resort fallback: same-origin Route Handler (local dev only).
+  const res = await fetch("/api/v1/stamp", { method: "POST", body: form });
   if (res.status === 413) {
     throw new Error(
       `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB. Please compress the video or use a smaller file.`,
@@ -187,33 +175,27 @@ export async function stampAsset(
   return jsonOrThrow<StampResponse>(res);
 }
 
-/** Verify a stamped asset by asset_id (Validation Test 2). */
+/** Verify a stamped asset by asset_id. */
 export async function verifyAsset(assetId: string): Promise<VerifyResponse> {
-  const publicUrl = resolvePublicUrl(`/v1/verify/${assetId}`);
-  if (publicUrl) {
-    try {
-      const res = await fetch(publicUrl);
-      if (res.ok) return jsonOrThrow<VerifyResponse>(res);
-    } catch {
-      /* fall through */
-    }
+  try {
+    const res = await fetch(url(`/v1/verify/${assetId}`));
+    if (res.ok) return jsonOrThrow<VerifyResponse>(res);
+  } catch (err) {
+    if (!(err instanceof TypeError)) throw err;
   }
-  const res = await fetch(`${API_BASE}/verify/${assetId}`);
+  const res = await fetch(`/api/v1/verify/${assetId}`);
   return jsonOrThrow<VerifyResponse>(res);
 }
 
 /** Fetch the raw manifest + assertions for the Provenance Card. */
 export async function getManifest(assetId: string): Promise<ManifestResponse> {
-  const publicUrl = resolvePublicUrl(`/v1/manifest/${assetId}`);
-  if (publicUrl) {
-    try {
-      const res = await fetch(publicUrl);
-      if (res.ok) return jsonOrThrow<ManifestResponse>(res);
-    } catch {
-      /* fall through */
-    }
+  try {
+    const res = await fetch(url(`/v1/manifest/${assetId}`));
+    if (res.ok) return jsonOrThrow<ManifestResponse>(res);
+  } catch (err) {
+    if (!(err instanceof TypeError)) throw err;
   }
-  const res = await fetch(`${API_BASE}/manifest/${assetId}`);
+  const res = await fetch(`/api/v1/manifest/${assetId}`);
   return jsonOrThrow<ManifestResponse>(res);
 }
 
@@ -221,30 +203,24 @@ export async function getManifest(assetId: string): Promise<ManifestResponse> {
 export async function listAssets(
   limit = 20,
 ): Promise<{ assets: AssetListItem[]; count: number }> {
-  const publicUrl = resolvePublicUrl(`/v1/assets?limit=${limit}`);
-  if (publicUrl) {
-    try {
-      const res = await fetch(publicUrl);
-      if (res.ok) return jsonOrThrow(res);
-    } catch {
-      /* fall through */
-    }
+  try {
+    const res = await fetch(url(`/v1/assets?limit=${limit}`));
+    if (res.ok) return jsonOrThrow(res);
+  } catch (err) {
+    if (!(err instanceof TypeError)) throw err;
   }
-  const res = await fetch(`${API_BASE}/assets?limit=${limit}`);
+  const res = await fetch(`/api/v1/assets?limit=${limit}`);
   return jsonOrThrow(res);
 }
 
 /** Dashboard summary stats. */
 export async function getStats(): Promise<StatsResponse> {
-  const publicUrl = resolvePublicUrl(`/v1/stats`);
-  if (publicUrl) {
-    try {
-      const res = await fetch(publicUrl);
-      if (res.ok) return jsonOrThrow<StatsResponse>(res);
-    } catch {
-      /* fall through */
-    }
+  try {
+    const res = await fetch(url(`/v1/stats`));
+    if (res.ok) return jsonOrThrow<StatsResponse>(res);
+  } catch (err) {
+    if (!(err instanceof TypeError)) throw err;
   }
-  const res = await fetch(`${API_BASE}/stats`);
+  const res = await fetch(`/api/v1/stats`);
   return jsonOrThrow<StatsResponse>(res);
 }
