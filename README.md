@@ -10,6 +10,12 @@
 
 ---
 
+## Thesis
+
+> EU AI Act Article 50 makes AI-content labeling mandatory from August 2026. Creators have no tool to comply at scale. Trace converts a $5K–$15K legal review into a sub-second library call — provenance is a workflow, not a feature.
+
+---
+
 ## What Trace does
 
 Trace attaches **cryptographically-verifiable C2PA provenance manifests** to AI-generated assets — images, audio, video — in under one second. Every stamped asset gets:
@@ -22,7 +28,7 @@ The manifest records: which AI model generated the asset, the prompt used, the c
 
 ## Why it matters
 
-AI-generated content is ubiquitous, but there is no creator-side tool to label it as AI-generated at scale. Regulations like the EU AI Act Article 50 create a transparency obligation, but creators have no way to comply without expensive legal review.
+EU AI Act Article 50 (effective August 2026) requires AI-generated content to be labeled at the point of first exposure. Creators who use AI tools (Midjourney, ElevenLabs, Runway) have no way to comply without expensive legal review — $5K–$15K per asset, or risk of regulatory penalties.
 
 Trace makes provenance a **sub-second workflow step** instead of a costly post-production bolt-on.
 
