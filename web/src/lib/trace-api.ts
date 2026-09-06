@@ -1,9 +1,20 @@
 /**
  * Trace API client — typed wrapper around the Trace FastAPI service.
  *
- * The browser calls same-origin `/api/v1/*`; Next.js rewrites that to the
- * FastAPI service on port 8000 (see next.config.ts). This keeps every request
- * relative (sandbox-safe) and identical in local dev.
+ * Upload strategy:
+ *  - LOCAL DEV: the browser calls same-origin `/api/v1/*`. Next.js rewrites
+ *    that to the local FastAPI service on port 8000 (see next.config.ts).
+ *    The Route Handler is not size-limited, so large files work.
+ *  - PRODUCTION (Vercel): if `NEXT_PUBLIC_TRACE_API_URL` is set, the browser
+ *    uploads DIRECTLY to the public Trace backend (the gateway-exposed
+ *    FastAPI service). This bypasses Vercel's 4.5 MB Route Handler body
+ *    limit entirely — Vercel Hobby functions cannot have their body limit
+ *    raised above 4.5 MB, so direct-to-backend is the only way to support
+ *    large media (video) uploads. The backend has CORS open to all origins
+ *    (the verifier is meant to be publicly callable).
+ *  - FALLBACK: if the direct backend call fails (e.g. CORS or network), the
+ *    client retries via the same-origin `/api/v1/stamp` Route Handler, which
+ *    will either proxy to the backend (small files) or return a demo preview.
  */
 
 export interface StampResponse {
@@ -68,7 +79,16 @@ export interface StatsResponse {
   compliance_rate: number;
 }
 
+/** Same-origin API base (works in both dev and prod via Route Handlers). */
 const API_BASE = "/api/v1";
+
+/**
+ * Public backend URL for direct browser→backend uploads in production.
+ * Set as NEXT_PUBLIC_TRACE_API_URL on Vercel. Must include the gateway's
+ * port-transform query, e.g.:
+ *   https://host.example/v1?XTransformPort=8000
+ */
+const PUBLIC_BACKEND = process.env.NEXT_PUBLIC_TRACE_API_URL || "";
 
 async function jsonOrThrow<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -84,6 +104,24 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Resolve a public-backend URL for a given V1 path, preserving the gateway's
+ * port-transform query. Returns "" if no public backend is configured.
+ */
+function resolvePublicUrl(path: string): string {
+  if (!PUBLIC_BACKEND) return "";
+  // PUBLIC_BASE looks like "https://host/v1?XTransformPort=8000".
+  // path looks like "/v1/stamp". Strip the leading "/v1" and merge queries.
+  const trimmed = path.replace(/^\/v1/, "");
+  const [baseUrl, baseQuery] = PUBLIC_BACKEND.split("?");
+  const [p, q] = trimmed.split("?");
+  const parts: string[] = [];
+  if (baseQuery) parts.push(baseQuery);
+  if (q) parts.push(q);
+  const qs = parts.length ? `?${parts.join("&")}` : "";
+  return `${baseUrl}${p}${qs}`;
+}
+
 /** Stamp an uploaded file with a C2PA provenance manifest. */
 export async function stampAsset(
   file: File,
@@ -95,30 +133,85 @@ export async function stampAsset(
   if (opts.prompt) form.append("prompt", opts.prompt);
   if (opts.creator) form.append("creator", opts.creator);
 
+  // Production: try a direct browser→backend upload first. This bypasses
+  // Vercel's 4.5 MB Route Handler body limit, so large media (video) works.
+  const publicUrl = resolvePublicUrl("/v1/stamp");
+  if (publicUrl) {
+    try {
+      const res = await fetch(publicUrl, { method: "POST", body: form });
+      if (res.ok) return jsonOrThrow<StampResponse>(res);
+      // If the direct upload fails with a non-413 error, surface it (the
+      // backend rejected the file for a real reason, e.g. invalid format).
+      if (res.status !== 413) return jsonOrThrow<StampResponse>(res);
+      // 413 from the backend itself (not Vercel) — fall through to same-origin.
+    } catch {
+      /* network/CORS error — fall through to same-origin proxy */
+    }
+  }
+
+  // Fallback (local dev, or backend unreachable): same-origin Route Handler.
   const res = await fetch(`${API_BASE}/stamp`, { method: "POST", body: form });
   return jsonOrThrow<StampResponse>(res);
 }
 
 /** Verify a stamped asset by asset_id (Validation Test 2). */
 export async function verifyAsset(assetId: string): Promise<VerifyResponse> {
+  const publicUrl = resolvePublicUrl(`/v1/verify/${assetId}`);
+  if (publicUrl) {
+    try {
+      const res = await fetch(publicUrl);
+      if (res.ok) return jsonOrThrow<VerifyResponse>(res);
+    } catch {
+      /* fall through */
+    }
+  }
   const res = await fetch(`${API_BASE}/verify/${assetId}`);
   return jsonOrThrow<VerifyResponse>(res);
 }
 
 /** Fetch the raw manifest + assertions for the Provenance Card. */
 export async function getManifest(assetId: string): Promise<ManifestResponse> {
+  const publicUrl = resolvePublicUrl(`/v1/manifest/${assetId}`);
+  if (publicUrl) {
+    try {
+      const res = await fetch(publicUrl);
+      if (res.ok) return jsonOrThrow<ManifestResponse>(res);
+    } catch {
+      /* fall through */
+    }
+  }
   const res = await fetch(`${API_BASE}/manifest/${assetId}`);
   return jsonOrThrow<ManifestResponse>(res);
 }
 
 /** List recently stamped assets (dashboard). */
-export async function listAssets(limit = 20): Promise<{ assets: AssetListItem[]; count: number }> {
+export async function listAssets(
+  limit = 20,
+): Promise<{ assets: AssetListItem[]; count: number }> {
+  const publicUrl = resolvePublicUrl(`/v1/assets?limit=${limit}`);
+  if (publicUrl) {
+    try {
+      const res = await fetch(publicUrl);
+      if (res.ok) return jsonOrThrow(res);
+    } catch {
+      /* fall through */
+    }
+  }
   const res = await fetch(`${API_BASE}/assets?limit=${limit}`);
   return jsonOrThrow(res);
 }
 
 /** Dashboard summary stats. */
 export async function getStats(): Promise<StatsResponse> {
+  const publicUrl = resolvePublicUrl(`/v1/stats`);
+  if (publicUrl) {
+    try {
+      const res = await fetch(publicUrl);
+      if (res.ok) return jsonOrThrow<StatsResponse>(res);
+    } catch {
+      /* fall through */
+    }
+  }
   const res = await fetch(`${API_BASE}/stats`);
-  return jsonOrThrow(res);
+  return jsonOrThrow<StatsResponse>(res);
 }
