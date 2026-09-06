@@ -142,8 +142,9 @@ export async function stampAsset(
       const res = await fetch(publicUrl, { method: "POST", body: form });
       if (res.ok) return jsonOrThrow<StampResponse>(res);
       // 413 / EntityTooLarge from the backend or gateway: the file is too
-      // large. Do NOT fall through to the Vercel Route Handler (it has an
-      // even smaller 4.5 MB limit and would 413 too). Surface a clear error.
+      // large. Surface a clear error — do NOT fall through to the Vercel
+      // Route Handler (it has an even smaller 4.5 MB limit and would 413
+      // too, producing a confusing "File too large" for an undersized file).
       if (res.status === 413) {
         const text = await res.text().catch(() => "");
         if (text.includes("EntityTooLarge") || text.includes("payload size")) {
@@ -155,13 +156,24 @@ export async function stampAsset(
           `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB.`,
         );
       }
-      // Any other non-ok status: surface the backend's error (e.g. invalid
-      // file format) rather than silently retrying via the Route Handler.
+      // Any OTHER non-ok status (e.g. 400 invalid file format, 500 server
+      // error): surface the backend's real error. Do NOT fall through to the
+      // Route Handler — that would hide the real cause and may 413.
       return jsonOrThrow<StampResponse>(res);
     } catch (err) {
-      // If it's already our friendly size error, rethrow it.
+      // Only fall through to the Route Handler on a genuine NETWORK/CORS
+      // failure (the backend was unreachable). A TypeError means the fetch
+      // itself failed (CORS, DNS, connection refused) — not an HTTP response.
+      // HTTP error responses (4xx/5xx) were already handled above and either
+      // threw "File too large" or called jsonOrThrow (which throws).
       if (err instanceof Error && err.message.includes("File too large")) throw err;
-      // Network/CORS error — fall through to same-origin proxy (local dev).
+      if (err instanceof TypeError) {
+        // Network/CORS error — fall through to same-origin proxy (local dev).
+      } else {
+        // An HTTP error response from the backend (e.g. "400: c2pa signing
+        // failed"). Re-throw it so the user sees the real cause.
+        throw err;
+      }
     }
   }
 
