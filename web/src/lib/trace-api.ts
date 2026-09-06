@@ -111,8 +111,9 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
 
 /**
  * Build the full URL for a V1 backend path.
- * - If a public backend is configured, append the path + port-transform query.
- * - Otherwise, return a same-origin relative path ("/v1/stats").
+ * - If a public backend is configured (NEXT_PUBLIC_TRACE_API_URL), use it.
+ * - In local dev (no public backend, not on vercel.app), use /api/v1/* so
+ *   Next.js proxies to localhost:8000 via next.config.ts rewrites.
  */
 function url(path: string): string {
   if (PUBLIC_BACKEND) {
@@ -125,8 +126,9 @@ function url(path: string): string {
     const qs = parts.length ? `?${parts.join("&")}` : "";
     return `${baseUrl}${p}${qs}`;
   }
-  // Same-origin relative (works when served from FastAPI via the gateway).
-  return path;
+  // Local dev: use /api/v1/* so Next.js rewrites proxy to localhost:8000.
+  // On Vercel (IS_VERCEL true, no PUBLIC_BACKEND): also use /api/v1/*.
+  return path.replace(/^\/v1/, "/api/v1");
 }
 
 /** Stamp an uploaded file with a C2PA provenance manifest. */
