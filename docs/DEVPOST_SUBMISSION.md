@@ -2,7 +2,7 @@
 
 > **Submission URL:** https://devpost.com
 > **Project name:** Trace — The Provenance-First AI Content Engine
-> **Tagline:** Every AI-generated creator asset, provenance-tagged in one click. EU AI Act Article 50 compliant in under one second.
+> **Tagline:** Every AI-generated creator asset, provenance-tagged in one click. aligned with EU AI Act Article 50 transparency workflows in under one second.
 
 ---
 

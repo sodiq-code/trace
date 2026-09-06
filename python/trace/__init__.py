@@ -1,7 +1,7 @@
 """Trace — The Provenance-First AI Content Engine.
 
 Every AI-generated creator asset, provenance-tagged in one click.
-EU AI Act Article 50 compliant in under one second.
+aligned with EU AI Act Article 50 transparency workflows in under one second.
 
 Trace wraps the C2PA (Content Provenance and Authenticity) standard in a
 creator-friendly command line. It generates cryptographically-verifiable

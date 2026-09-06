@@ -15,7 +15,7 @@
 | Time | Beat | Script | Action |
 |------|------|--------|--------|
 | 0:00–0:10 | Hook | "EU AI Act Article 50 makes AI-content labeling mandatory from August 2026. Creators have no tool to comply." | Show the EU AI Act headline on screen |
-| 0:10–0:25 | Problem | "Maya is a solo YouTuber with a sponsorship deal. Her sponsor asks: is your AI-generated thumbnail EU AI Act compliant? Maya has no lawyer. She has Trace." | Show Maya's Midjourney thumbnail |
+| 0:10–0:25 | Problem | "Maya is a solo YouTuber with a sponsorship deal. Her sponsor asks: is your AI-generated thumbnail provenance-tagged for transparency? Maya has no lawyer. She has Trace." | Show Maya's Midjourney thumbnail |
 | 0:25–0:45 | Live demo — Stamping | "Watch. Maya drags her Midjourney thumbnail into Trace. In 0.5 seconds, Trace generates a C2PA manifest with the full source chain — model, prompt, timestamp, creator identity, cryptographic signature — and produces a public Provenance Card URL." | Drag `samples/demo.png` into the dashboard dropzone. Show the [Valid] result. |
 | 0:45–1:10 | Live demo — Verifying | "Maya opens the Provenance Card in a second tab. The page renders the source chain. She clicks Verify Cryptographically. The Verifier returns 200 OK — signature valid — in under 500 milliseconds." | Switch to the Provenance Card tab. Click "Verify cryptographically". Show the green VALID badge and "200 OK — signature valid" result. |
 | 1:10–1:25 | Result | "Maya forwards the URL to her sponsor. Her sponsor sees the green compliance checkmark. Approves payment. $0 regulatory cost. 8 minutes total. Without Trace: $5,000 to $15,000, 3 to 5 business days." | Show the compliance stats (3 assets, 100% compliance). Show the Monthly Report PDF export button. |

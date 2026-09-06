@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
  title: "Trace — The Provenance-First AI Content Engine",
  description:
-  "Every AI-generated asset, provenance-tagged in one click. EU AI Act Article 50 compliant in under one second. Cryptographically-verifiable C2PA manifests.",
+  "Every AI-generated asset, provenance-tagged in one click. aligned with EU AI Act Article 50 transparency workflows in under one second. Cryptographically-verifiable C2PA manifests.",
  keywords: [
   "C2PA",
   "AI provenance",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
  openGraph: {
   title: "Trace — The Provenance-First AI Content Engine",
   description:
-   "Every AI-generated asset, provenance-tagged in one click. EU AI Act Article 50 compliant in under one second.",
+   "Every AI-generated asset, provenance-tagged in one click. aligned with EU AI Act Article 50 transparency workflows in under one second.",
   siteName: "Trace",
   type: "website",
  },
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
   card: "summary_large_image",
   title: "Trace — The Provenance-First AI Content Engine",
   description:
-   "Every AI-generated asset, provenance-tagged in one click. EU AI Act Article 50 compliant in under one second.",
+   "Every AI-generated asset, provenance-tagged in one click. aligned with EU AI Act Article 50 transparency workflows in under one second.",
  },
 };
 

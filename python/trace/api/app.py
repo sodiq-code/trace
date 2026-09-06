@@ -63,7 +63,7 @@ def create_app() -> FastAPI:
     title="Trace — Provenance-First AI Content Engine",
     description=(
       "Every AI-generated creator asset, provenance-tagged in one click. "
-      "EU AI Act Article 50 compliant in under one second. "
+      "aligned with EU AI Act Article 50 transparency workflows in under one second. "
       "Trace attaches cryptographically-verifiable C2PA provenance "
       "manifests to AI-generated assets."
     ),

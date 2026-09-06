@@ -141,7 +141,14 @@ Threats and mitigations :
 - **Malicious file upload (path traversal)** — `os.path.basename` on all filenames.
 - **Supply chain (c2pa-python)** — pinned version, manual diff review.
 
-## 8. Reliability & fallback
+## 8. Trust model nuance
+
+> **Provenance ≠ truth.** A valid C2PA signature proves the manifest has not been
+> tampered with since signing — it does **not** prove the creator's claims (model
+> used, prompt, identity) are truthful. Trace records what the creator attests;
+> the signature guarantees the integrity of that attestation, not its accuracy.
+
+## 9. Reliability & fallback
 
 | Failure | Fallback |
 | --- | --- |
@@ -152,7 +159,7 @@ Threats and mitigations :
 
 Pre-stamped demo assets are bundled in samples/ as the demo-safe fallback.
 
-## 9. Testing strategy
+## 10. Testing strategy
 
 - **Unit**: `test_stamper.py` — manifest construction, classification, hash,
  prompt-length cap, latency target.
@@ -169,7 +176,7 @@ Pre-stamped demo assets are bundled in samples/ as the demo-safe fallback.
 Coverage: **stamper 97.8%, verifier 84.2%, api/app 94.9%**, total 91.9%
 (target 80% on all three — exceeded). 43 tests pass.
 
-## 10. Package naming note
+## 11. Package naming note
 
 The source directory is `python/trace/` (matching the engineering spec), but
 the package is **importable as `tracekit`** because Python's standard library

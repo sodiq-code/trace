@@ -142,7 +142,7 @@ export function HowItWorks() {
     {/* Footer badge */}
     <div className="flex items-center justify-center gap-2 text-xs text-slate-400 pt-2 border-t border-slate-100 dark:border-slate-800">
      <Fingerprint className="h-3.5 w-3.5" />
-     Built on the C2PA open standard · c2pa-python SDK 0.90.19 · ES256 signatures
+     Built on the C2PA open standard · c2pa-python 0.37.10 (Rust SDK 0.90.19) · ES256 signatures
     </div>
    </CardContent>
   </Card>
