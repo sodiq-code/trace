@@ -1,14 +1,14 @@
 """Trace command-line interface.
 
-Surface (report Sec 25.2):
-    trace init      [--email X --channel Y]         provision ~/.trace/
-    trace stamp     <file> [--model --prompt --creator --out]
-    trace stamp-dir <dir>  [--model --prompt --creator --out]   batch (report §19.2)
-    trace verify    <file>                          verify a stamped asset
-    trace list      [--limit N]                     list recently stamped assets
-    trace serve     [--host --port]                 start the FastAPI HTTP API
-    trace report    [--out FILE]                    generate Monthly Compliance Report PDF
-    trace --version
+Surface :
+  trace init   [--email X --channel Y]     provision ~/.trace/
+  trace stamp   <file> [--model --prompt --creator --out]
+  trace stamp-dir <dir> [--model --prompt --creator --out]  batch 
+  trace verify  <file>             verify a stamped asset
+  trace list   [--limit N]           list recently stamped assets
+  trace serve   [--host --port]         start the FastAPI HTTP API
+  trace report  [--out FILE]          generate Monthly Compliance Report PDF
+  trace --version
 """
 from __future__ import annotations
 
@@ -28,22 +28,22 @@ from .verifier import Verifier
 # ---------------------------------------------------------------------------
 
 def _ok(msg: str) -> None:
-    print(msg)
+  print(msg)
 
 
 def _err(msg: str) -> None:
-    print(f"trace: error: {msg}", file=sys.stderr)
+  print(f"trace: error: {msg}", file=sys.stderr)
 
 
 def _box(title: str, lines: list[str]) -> None:
-    width = max(len(title), *(len(l) for l in lines)) if lines else len(title)
-    width = min(width + 4, 88)
-    print("┌" + "─" * (width - 2) + "┐")
-    print("│ " + title.ljust(width - 4) + " │")
-    print("├" + "─" * (width - 2) + "┤")
-    for l in lines:
-        print("│ " + l.ljust(width - 4) + " │")
-    print("└" + "─" * (width - 2) + "┘")
+  width = max(len(title), *(len(l) for l in lines)) if lines else len(title)
+  width = min(width + 4, 88)
+  print("┌" + "─" * (width - 2) + "┐")
+  print("│ " + title.ljust(width - 4) + " │")
+  print("├" + "─" * (width - 2) + "┤")
+  for l in lines:
+    print("│ " + l.ljust(width - 4) + " │")
+  print("└" + "─" * (width - 2) + "┘")
 
 
 # ---------------------------------------------------------------------------
@@ -51,199 +51,199 @@ def _box(title: str, lines: list[str]) -> None:
 # ---------------------------------------------------------------------------
 
 def cmd_init(args: argparse.Namespace) -> int:
-    home = keys.init_trace_home(args.email, args.channel, force=args.force)
-    _box(
-        "Trace initialized",
-        [
-            f"home:     {home}",
-            f"keys:     {config.keys_path()}  (0600)",
-            f"certs:    {config.certs_path()}  (0600)",
-            f"database: {config.db_path()}",
-            f"creator:  {args.email}  ({args.channel})",
-            "",
-            "Next: trace stamp <your-asset.png> --model midjourney-v6 --prompt \"...\"",
-        ],
-    )
-    return 0
+  home = keys.init_trace_home(args.email, args.channel, force=args.force)
+  _box(
+    "Trace initialized",
+    [
+      f"home:   {home}",
+      f"keys:   {config.keys_path()} (0600)",
+      f"certs:  {config.certs_path()} (0600)",
+      f"database: {config.db_path()}",
+      f"creator: {args.email} ({args.channel})",
+      "",
+      "Next: trace stamp <your-asset.png> --model midjourney-v6 --prompt \"...\"",
+    ],
+  )
+  return 0
 
 
 def cmd_stamp(args: argparse.Namespace) -> int:
-    # Resolve creator identity: flag > config > default.
-    creator = args.creator
-    if not creator:
-        cfg = keys.load_creator_config()
-        creator = (cfg or {}).get("creator_email", "unknown@trace.local")
+  # Resolve creator identity: flag > config > default.
+  creator = args.creator
+  if not creator:
+    cfg = keys.load_creator_config()
+    creator = (cfg or {}).get("creator_email", "unknown@trace.local")
 
-    src = Path(args.file).expanduser()
-    if not src.is_file():
-        _err(f"file not found: {src}")
-        return 2
+  src = Path(args.file).expanduser()
+  if not src.is_file():
+    _err(f"file not found: {src}")
+    return 2
 
-    db = Database()
-    try:
-        stamper = Stamper(creator=creator, db=db)
-        result = stamper.stamp(
-            src,
-            model=args.model,
-            prompt=args.prompt,
-            creator=creator,
-            dest_dir=args.out,
-        )
-    except StamperError as exc:
-        _err(str(exc))
-        return 1
-    finally:
-        db.close()
-
-    _box(
-        f"Provenance manifest attached  [{result.validation_state}]",
-        [
-            f"asset_id:   {result.asset_id}",
-            f"manifest:   {result.manifest_id}",
-            f"file_type:  {result.file_type.value}",
-            f"sha256:     {result.file_hash[:24]}…",
-            f"source:     {result.source_path}",
-            f"signed:     {result.signed_path}",
-            f"card_url:   {result.card_url}",
-            "",
-            "Assertions (creator-readable):",
-            *(f"  • {a.name}: {a.value}" for a in result.assertions),
-        ],
+  db = Database()
+  try:
+    stamper = Stamper(creator=creator, db=db)
+    result = stamper.stamp(
+      src,
+      model=args.model,
+      prompt=args.prompt,
+      creator=creator,
+      dest_dir=args.out,
     )
-    # Machine-parseable line for pipelines (report Sec 18.3).
-    print(json.dumps({
-        "asset_id": result.asset_id,
-        "manifest_id": result.manifest_id,
-        "signed_path": result.signed_path,
-        "card_url": result.card_url,
-        "validation_state": result.validation_state,
-    }))
-    return 0
+  except StamperError as exc:
+    _err(str(exc))
+    return 1
+  finally:
+    db.close()
+
+  _box(
+    f"Provenance manifest attached [{result.validation_state}]",
+    [
+      f"asset_id:  {result.asset_id}",
+      f"manifest:  {result.manifest_id}",
+      f"file_type: {result.file_type.value}",
+      f"sha256:   {result.file_hash[:24]}…",
+      f"source:   {result.source_path}",
+      f"signed:   {result.signed_path}",
+      f"card_url:  {result.card_url}",
+      "",
+      "Assertions (creator-readable):",
+      *(f" • {a.name}: {a.value}" for a in result.assertions),
+    ],
+  )
+  # Machine-parseable line for pipelines .
+  print(json.dumps({
+    "asset_id": result.asset_id,
+    "manifest_id": result.manifest_id,
+    "signed_path": result.signed_path,
+    "card_url": result.card_url,
+    "validation_state": result.validation_state,
+  }))
+  return 0
 
 
 def cmd_stamp_dir(args: argparse.Namespace) -> int:
-    """Batch-stamp every supported file in a directory (report §19.2 Should Work)."""
-    directory = Path(args.directory).expanduser()
-    if not directory.is_dir():
-        _err(f"directory not found: {directory}")
-        return 2
+  """Batch-stamp every supported file in a directory ( Should Work)."""
+  directory = Path(args.directory).expanduser()
+  if not directory.is_dir():
+    _err(f"directory not found: {directory}")
+    return 2
 
-    creator = args.creator
-    if not creator:
-        cfg = keys.load_creator_config()
-        creator = (cfg or {}).get("creator_email", "unknown@trace.local")
+  creator = args.creator
+  if not creator:
+    cfg = keys.load_creator_config()
+    creator = (cfg or {}).get("creator_email", "unknown@trace.local")
 
-    # Find all supported files in the directory.
-    supported_exts = set(config.EXT_TO_FILETYPE.keys())
-    files = sorted(
-        f for f in directory.iterdir()
-        if f.is_file() and f.suffix.lower() in supported_exts
-    )
+  # Find all supported files in the directory.
+  supported_exts = set(config.EXT_TO_FILETYPE.keys())
+  files = sorted(
+    f for f in directory.iterdir()
+    if f.is_file() and f.suffix.lower() in supported_exts
+  )
 
-    if not files:
-        _err(f"no supported files found in {directory}")
-        _err(f"supported: {', '.join(sorted(supported_exts))}")
-        return 1
+  if not files:
+    _err(f"no supported files found in {directory}")
+    _err(f"supported: {', '.join(sorted(supported_exts))}")
+    return 1
 
-    db = Database()
-    stamper = Stamper(creator=creator, db=db)
-    results_list = []
-    success = 0
-    failed = 0
+  db = Database()
+  stamper = Stamper(creator=creator, db=db)
+  results_list = []
+  success = 0
+  failed = 0
 
-    for f in files:
-        try:
-            result = stamper.stamp(
-                f,
-                model=args.model,
-                prompt=args.prompt,
-                creator=creator,
-                dest_dir=args.out,
-            )
-            results_list.append(result)
-            success += 1
-        except StamperError as exc:
-            _err(f"{f.name}: {exc}")
-            failed += 1
+  for f in files:
+    try:
+      result = stamper.stamp(
+        f,
+        model=args.model,
+        prompt=args.prompt,
+        creator=creator,
+        dest_dir=args.out,
+      )
+      results_list.append(result)
+      success += 1
+    except StamperError as exc:
+      _err(f"{f.name}: {exc}")
+      failed += 1
 
-    db.close()
+  db.close()
 
-    _box(
-        f"Batch stamp complete — {success} succeeded, {failed} failed",
-        [
-            f"directory: {directory}",
-            f"model:     {args.model}",
-            f"creator:   {creator}",
-            "",
-            *(f"  {'✓' if r.validation_state.lower()=='valid' else '✗'} {Path(r.source_path).name} → {r.card_url}"
-              for r in results_list),
-        ],
-    )
+  _box(
+    f"Batch stamp complete — {success} succeeded, {failed} failed",
+    [
+      f"directory: {directory}",
+      f"model:   {args.model}",
+      f"creator:  {creator}",
+      "",
+      *(f" {'✓' if r.validation_state.lower()=='valid' else '✗'} {Path(r.source_path).name} → {r.card_url}"
+       for r in results_list),
+    ],
+  )
 
-    # Machine-parseable JSON for pipelines.
-    print(json.dumps({
-        "success": success,
-        "failed": failed,
-        "assets": [
-            {"file": r.source_path, "asset_id": r.asset_id, "card_url": r.card_url,
-             "validation_state": r.validation_state}
-            for r in results_list
-        ],
-    }))
-    return 0 if failed == 0 else 1
+  # Machine-parseable JSON for pipelines.
+  print(json.dumps({
+    "success": success,
+    "failed": failed,
+    "assets": [
+      {"file": r.source_path, "asset_id": r.asset_id, "card_url": r.card_url,
+       "validation_state": r.validation_state}
+      for r in results_list
+    ],
+  }))
+  return 0 if failed == 0 else 1
 
 
 def cmd_verify(args: argparse.Namespace) -> int:
-    src = Path(args.file).expanduser()
-    if not src.is_file():
-        _err(f"file not found: {src}")
-        return 2
+  src = Path(args.file).expanduser()
+  if not src.is_file():
+    _err(f"file not found: {src}")
+    return 2
 
-    result = Verifier().verify_file(src)
-    if not result.has_manifest:
-        _err(f"no C2PA manifest found in {src}" +
-             (f" ({result.error})" if result.error else ""))
-        return 1
+  result = Verifier().verify_file(src)
+  if not result.has_manifest:
+    _err(f"no C2PA manifest found in {src}" +
+       (f" ({result.error})" if result.error else ""))
+    return 1
 
-    status = "VALID" if result.signature_valid else "INVALID"
-    _box(
-        f"C2PA manifest verified  —  signature {status}",
-        [
-            f"file:              {result.asset_path}",
-            f"validation_state:  {result.validation_state}",
-            f"signature_valid:   {result.signature_valid}",
-            f"generator:         {result.claim_generator or '-'}",
-            "",
-            "Claim chain:",
-            *(f"  • {a.name}: {a.value}" for a in result.assertions),
-        ],
-    )
-    if args.json:
-        print(result.manifest_json)
-    return 0 if result.signature_valid else 1
+  status = "VALID" if result.signature_valid else "INVALID"
+  _box(
+    f"C2PA manifest verified — signature {status}",
+    [
+      f"file:       {result.asset_path}",
+      f"validation_state: {result.validation_state}",
+      f"signature_valid:  {result.signature_valid}",
+      f"generator:     {result.claim_generator or '-'}",
+      "",
+      "Claim chain:",
+      *(f" • {a.name}: {a.value}" for a in result.assertions),
+    ],
+  )
+  if args.json:
+    print(result.manifest_json)
+  return 0 if result.signature_valid else 1
 
 
 def cmd_list(args: argparse.Namespace) -> int:
-    db = Database()
-    try:
-        rows = db.recent_assets(limit=args.limit)
-        total = db.count_assets()
-        verifs = db.count_verifications()
-    finally:
-        db.close()
+  db = Database()
+  try:
+    rows = db.recent_assets(limit=args.limit)
+    total = db.count_assets()
+    verifs = db.count_verifications()
+  finally:
+    db.close()
 
-    if not rows:
-        _ok("No assets stamped yet. Run: trace stamp <file> --model ... --prompt ...")
-        return 0
-
-    _box(
-        f"Compliance dashboard  —  {total} asset(s) stamped, {verifs} verification(s)",
-        [
-            f"{r['created_at']}  {r['file_type']:<5}  {r['file_hash'][:12]}…  {Path(r['file_path']).name}"
-            for r in rows
-        ],
-    )
+  if not rows:
+    _ok("No assets stamped yet. Run: trace stamp <file> --model ... --prompt ...")
     return 0
+
+  _box(
+    f"Compliance dashboard — {total} asset(s) stamped, {verifs} verification(s)",
+    [
+      f"{r['created_at']} {r['file_type']:<5} {r['file_hash'][:12]}… {Path(r['file_path']).name}"
+      for r in rows
+    ],
+  )
+  return 0
 
 
 # ---------------------------------------------------------------------------
@@ -251,137 +251,137 @@ def cmd_list(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 def cmd_report(args: argparse.Namespace) -> int:
-    from .report import generate_compliance_report
+  from .report import generate_compliance_report
 
-    cfg = keys.load_creator_config() or {}
-    email = args.email or cfg.get("creator_email", "unknown@trace.local")
-    channel = args.channel or cfg.get("channel_name", "Trace Creator")
+  cfg = keys.load_creator_config() or {}
+  email = args.email or cfg.get("creator_email", "unknown@trace.local")
+  channel = args.channel or cfg.get("channel_name", "Trace Creator")
 
-    db = Database()
-    try:
-        out = args.out or str(config.trace_home() / "compliance-report.pdf")
-        pdf_bytes = generate_compliance_report(
-            db=db, creator_email=email, channel_name=channel, output_path=out,
-        )
-        _box(
-            "Monthly Compliance Report generated",
-            [
-                f"creator:  {email}",
-                f"channel:  {channel}",
-                f"assets:   {db.count_assets()}",
-                f"verifs:   {db.count_verifications()}",
-                f"output:   {out}",
-                f"size:     {len(pdf_bytes)} bytes",
-            ],
-        )
-    finally:
-        db.close()
-    return 0
+  db = Database()
+  try:
+    out = args.out or str(config.trace_home() / "compliance-report.pdf")
+    pdf_bytes = generate_compliance_report(
+      db=db, creator_email=email, channel_name=channel, output_path=out,
+    )
+    _box(
+      "Monthly Compliance Report generated",
+      [
+        f"creator: {email}",
+        f"channel: {channel}",
+        f"assets:  {db.count_assets()}",
+        f"verifs:  {db.count_verifications()}",
+        f"output:  {out}",
+        f"size:   {len(pdf_bytes)} bytes",
+      ],
+    )
+  finally:
+    db.close()
+  return 0
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
-    # Import here so `trace stamp` / `trace verify` don't pay the FastAPI import cost.
-    import uvicorn
-    from .api.app import app
+  # Import here so `trace stamp` / `trace verify` don't pay the FastAPI import cost.
+  import uvicorn
+  from .api.app import app
 
-    _box(
-        f"Trace HTTP API starting on http://{args.host}:{args.port}",
-        [
-            f"docs:    http://{args.host}:{args.port}/docs",
-            f"stamp:   POST http://{args.host}:{args.port}/v1/stamp",
-            f"verify:  GET  http://{args.host}:{args.port}/v1/verify/<asset_id>",
-            f"card:    GET  http://{args.host}:{args.port}/card/<asset_id>",
-            f"home:    {config.trace_home()}",
-            "",
-            "Press Ctrl+C to stop.",
-        ],
-    )
-    uvicorn.run(
-        "tracekit.api.app:app",
-        host=args.host,
-        port=args.port,
-        reload=args.reload,
-        log_level="info",
-    )
-    return 0
+  _box(
+    f"Trace HTTP API starting on http://{args.host}:{args.port}",
+    [
+      f"docs:  http://{args.host}:{args.port}/docs",
+      f"stamp:  POST http://{args.host}:{args.port}/v1/stamp",
+      f"verify: GET http://{args.host}:{args.port}/v1/verify/<asset_id>",
+      f"card:  GET http://{args.host}:{args.port}/card/<asset_id>",
+      f"home:  {config.trace_home()}",
+      "",
+      "Press Ctrl+C to stop.",
+    ],
+  )
+  uvicorn.run(
+    "tracekit.api.app:app",
+    host=args.host,
+    port=args.port,
+    reload=args.reload,
+    log_level="info",
+  )
+  return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(
-        prog="trace",
-        description=(
-            "Trace — The Provenance-First AI Content Engine. "
-            "Stamp AI-generated assets with C2PA provenance manifests."
-        ),
-    )
-    p.add_argument("--version", action="version", version=f"trace {__version__}")
-    sub = p.add_subparsers(dest="command", required=True, metavar="<command>")
+  p = argparse.ArgumentParser(
+    prog="trace",
+    description=(
+      "Trace — The Provenance-First AI Content Engine. "
+      "Stamp AI-generated assets with C2PA provenance manifests."
+    ),
+  )
+  p.add_argument("--version", action="version", version=f"trace {__version__}")
+  sub = p.add_subparsers(dest="command", required=True, metavar="<command>")
 
-    # init
-    p_init = sub.add_parser("init", help="provision ~/.trace/ + creator identity")
-    p_init.add_argument("--email", default="demo@trace.local", help="creator email")
-    p_init.add_argument("--channel", default="Trace Demo", help="creator channel name")
-    p_init.add_argument("--force", action="store_true", help="overwrite existing credentials")
-    p_init.set_defaults(func=cmd_init)
+  # init
+  p_init = sub.add_parser("init", help="provision ~/.trace/ + creator identity")
+  p_init.add_argument("--email", default="demo@trace.local", help="creator email")
+  p_init.add_argument("--channel", default="Trace Demo", help="creator channel name")
+  p_init.add_argument("--force", action="store_true", help="overwrite existing credentials")
+  p_init.set_defaults(func=cmd_init)
 
-    # stamp
-    p_stamp = sub.add_parser("stamp", help="attach a C2PA provenance manifest to <file>")
-    p_stamp.add_argument("file", help="path to the asset (PNG, JPEG, WEBP, WAV, MP3, MP4, ...)")
-    p_stamp.add_argument("--model", default="unknown-ai-model", help="generator model (e.g. midjourney-v6)")
-    p_stamp.add_argument("--prompt", default="", help="generation prompt (max 2KB)")
-    p_stamp.add_argument("--creator", default=None, help="creator identity (default: ~/.trace/config.json)")
-    p_stamp.add_argument("--out", default=None, help="output directory for the signed asset")
-    p_stamp.set_defaults(func=cmd_stamp)
+  # stamp
+  p_stamp = sub.add_parser("stamp", help="attach a C2PA provenance manifest to <file>")
+  p_stamp.add_argument("file", help="path to the asset (PNG, JPEG, WEBP, WAV, MP3, MP4, ...)")
+  p_stamp.add_argument("--model", default="unknown-ai-model", help="generator model (e.g. midjourney-v6)")
+  p_stamp.add_argument("--prompt", default="", help="generation prompt (max 2KB)")
+  p_stamp.add_argument("--creator", default=None, help="creator identity (default: ~/.trace/config.json)")
+  p_stamp.add_argument("--out", default=None, help="output directory for the signed asset")
+  p_stamp.set_defaults(func=cmd_stamp)
 
-    # stamp-dir (batch — report §19.2 Should Work)
-    p_stampdir = sub.add_parser("stamp-dir", help="batch-stamp every supported file in <directory>")
-    p_stampdir.add_argument("directory", help="directory containing files to stamp")
-    p_stampdir.add_argument("--model", default="unknown-ai-model", help="generator model (applied to all files)")
-    p_stampdir.add_argument("--prompt", default="", help="generation prompt (applied to all files)")
-    p_stampdir.add_argument("--creator", default=None, help="creator identity (default: ~/.trace/config.json)")
-    p_stampdir.add_argument("--out", default=None, help="output directory for the signed assets")
-    p_stampdir.set_defaults(func=cmd_stamp_dir)
+  # stamp-dir (batch — Should Work)
+  p_stampdir = sub.add_parser("stamp-dir", help="batch-stamp every supported file in <directory>")
+  p_stampdir.add_argument("directory", help="directory containing files to stamp")
+  p_stampdir.add_argument("--model", default="unknown-ai-model", help="generator model (applied to all files)")
+  p_stampdir.add_argument("--prompt", default="", help="generation prompt (applied to all files)")
+  p_stampdir.add_argument("--creator", default=None, help="creator identity (default: ~/.trace/config.json)")
+  p_stampdir.add_argument("--out", default=None, help="output directory for the signed assets")
+  p_stampdir.set_defaults(func=cmd_stamp_dir)
 
-    # verify
-    p_verify = sub.add_parser("verify", help="verify a stamped asset's manifest integrity")
-    p_verify.add_argument("file", help="path to the (possibly stamped) asset")
-    p_verify.add_argument("--json", action="store_true", help="emit the raw C2PA manifest JSON")
-    p_verify.set_defaults(func=cmd_verify)
+  # verify
+  p_verify = sub.add_parser("verify", help="verify a stamped asset's manifest integrity")
+  p_verify.add_argument("file", help="path to the (possibly stamped) asset")
+  p_verify.add_argument("--json", action="store_true", help="emit the raw C2PA manifest JSON")
+  p_verify.set_defaults(func=cmd_verify)
 
-    # list
-    p_list = sub.add_parser("list", help="list recently stamped assets")
-    p_list.add_argument("--limit", type=int, default=20, help="max rows (default 20)")
-    p_list.set_defaults(func=cmd_list)
+  # list
+  p_list = sub.add_parser("list", help="list recently stamped assets")
+  p_list.add_argument("--limit", type=int, default=20, help="max rows (default 20)")
+  p_list.set_defaults(func=cmd_list)
 
-    # serve (Day 2 — FastAPI HTTP API)
-    p_serve = sub.add_parser("serve", help="start the FastAPI HTTP API (Stamper + Verifier)")
-    p_serve.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1)")
-    p_serve.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")
-    p_serve.add_argument("--reload", action="store_true", help="auto-reload on file changes (dev)")
-    p_serve.set_defaults(func=cmd_serve)
+  # serve (— FastAPI HTTP API)
+  p_serve = sub.add_parser("serve", help="start the FastAPI HTTP API (Stamper + Verifier)")
+  p_serve.add_argument("--host", default="127.0.0.1", help="bind host (default 127.0.0.1)")
+  p_serve.add_argument("--port", type=int, default=8000, help="bind port (default 8000)")
+  p_serve.add_argument("--reload", action="store_true", help="auto-reload on file changes (dev)")
+  p_serve.set_defaults(func=cmd_serve)
 
-    # report (Should Work — Monthly Compliance Report PDF)
-    p_report = sub.add_parser("report", help="generate Monthly Compliance Report PDF")
-    p_report.add_argument("--out", default=None, help="output file path (default ~/.trace/compliance-report.pdf)")
-    p_report.add_argument("--email", default=None, help="override creator email")
-    p_report.add_argument("--channel", default=None, help="override channel name")
-    p_report.set_defaults(func=cmd_report)
+  # report (Should Work — Monthly Compliance Report PDF)
+  p_report = sub.add_parser("report", help="generate Monthly Compliance Report PDF")
+  p_report.add_argument("--out", default=None, help="output file path (default ~/.trace/compliance-report.pdf)")
+  p_report.add_argument("--email", default=None, help="override creator email")
+  p_report.add_argument("--channel", default=None, help="override channel name")
+  p_report.set_defaults(func=cmd_report)
 
-    return p
+  return p
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = build_parser()
-    args = parser.parse_args(argv)
-    try:
-        return args.func(args)
-    except KeyboardInterrupt:
-        _err("interrupted")
-        return 130
-    except Exception as exc:  # pragma: no cover - last-resort guard
-        _err(f"unexpected: {exc}")
-        return 1
+  parser = build_parser()
+  args = parser.parse_args(argv)
+  try:
+    return args.func(args)
+  except KeyboardInterrupt:
+    _err("interrupted")
+    return 130
+  except Exception as exc: # pragma: no cover - last-resort guard
+    _err(f"unexpected: {exc}")
+    return 1
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+  raise SystemExit(main())

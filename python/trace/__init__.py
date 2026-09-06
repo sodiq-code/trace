@@ -8,11 +8,11 @@ creator-friendly command line. It generates cryptographically-verifiable
 provenance manifests for AI-generated assets (images, audio, video, text)
 and records them in a local SQLite store for compliance reporting.
 
-Public surface (Day 1):
-    - ``trace init``          — provision ~/.trace/ + creator identity
-    - ``trace stamp <file>``  — attach a C2PA provenance manifest
-    - ``trace verify <file>`` — verify a stamped asset's manifest
-    - ``trace list``          — list recently stamped assets
+Public surface :
+  - ``trace init``     — provision ~/.trace/ + creator identity
+  - ``trace stamp <file>`` — attach a C2PA provenance manifest
+  - ``trace verify <file>`` — verify a stamped asset's manifest
+  - ``trace list``     — list recently stamped assets
 """
 
 __version__ = "0.1.0"

@@ -1,6 +1,6 @@
-# Trace — Devpost Submission Text
+# Trace — Submission Text
 
-> **Submission URL:** https://devpost.com/submit-to/31192-ai-content-engine-hackathon
+> **Submission URL:** https://devpost.com
 > **Project name:** Trace — The Provenance-First AI Content Engine
 > **Tagline:** Every AI-generated creator asset, provenance-tagged in one click. EU AI Act Article 50 compliant in under one second.
 
@@ -91,7 +91,7 @@ Trace stamps any AI-generated asset (image, audio, video) with a **cryptographic
 
 ## Eligibility compliance
 
-- Built during the hackathon window (September 1–8, 2026). All code committed to https://github.com/sodiq-code/trace.
+- Built for the AI Content Engine challenge. All code committed to https://github.com/sodiq-code/trace.
 - Stays within API rate limits (zero external API calls in the core path — c2pa-python runs locally).
 - Solo submission.
 - Uses the C2PA open standard (maintained by the C2PA consortium) and the official `c2pa-python` library.

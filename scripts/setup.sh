@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Trace — one-command setup (report Sec 30.5).
+# Trace — one-command setup .
 # Usage: ./scripts/setup.sh
 set -euo pipefail
 
@@ -21,9 +21,9 @@ cat <<'EOF'
 ==> Trace is ready.
 
 Quickstart:
-  trace stamp <your-asset.png> --model midjourney-v6 --prompt "..."
-  trace verify <signed-asset.png>
-  trace list
+ trace stamp <your-asset.png> --model midjourney-v6 --prompt "..."
+ trace verify <signed-asset.png>
+ trace list
 
 Docs: README.md, docs/ARCHITECTURE.md
 EOF

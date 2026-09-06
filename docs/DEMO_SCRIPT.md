@@ -1,7 +1,7 @@
 # Trace — Demo Script (90 seconds)
 
-> **PRIMARY** — this is what we record for the Devpost submission.
-> Source: report Section 39.3. Adapted with the actual live URLs.
+> **PRIMARY** — this is what we record for the submission.
+> Source: report Adapted with the actual live URLs.
 
 ## Setup before recording
 
@@ -24,13 +24,13 @@
 ## Recording tips
 
 - Speak at a natural pace — the script is ~130 words, which fits comfortably in 90 seconds.
-- Show the cursor clearly — the judge needs to see *where* you click.
+- Show the cursor clearly — reviewers needs to see *where* you click.
 - The stamping step (0:25–0:45) is the money shot. Make sure the [Valid] badge is visible.
 - If the live stamping fails (network issue), switch to the pre-stamped Provenance Card URL (tab 2) — it always works.
 
 ## Demo-safe fallback
 
-If the live demo fails entirely (laptop crash, network down), play the 90-second pre-recording. The Devpost submission includes both the live URL and the recording. The pre-stamped demo assets at `samples/stamped/` always work — they're committed to the repo and deployed with the app.
+If the live demo fails entirely (laptop crash, network down), play the 90-second pre-recording. The submission includes both the live URL and the recording. The pre-stamped demo assets at `samples/stamped/` always work — they're committed to the repo and deployed with the app.
 
 ## Key URLs
 
@@ -43,7 +43,7 @@ If the live demo fails entirely (laptop crash, network down), play the 90-second
 | GitHub repo | https://github.com/sodiq-code/trace |
 | API docs (local) | http://localhost:8000/docs (run `trace serve`) |
 
-## What the judge sees
+## What reviewers sees
 
 1. **Functionality:** A working tool that stamps AI-generated assets with real C2PA manifests in under 1 second. 43 tests, 92% coverage. Fresh-clone verified.
 2. **Creativity:** No submission in the gallery addresses EU AI Act Article 50 compliance for creators. The closest commercial product (OpusClip) does clipping, not provenance. Trace is the first creator-facing C2PA tool.

@@ -8,11 +8,11 @@ import { fetchTrace } from '@/lib/trace-proxy';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const data = await fetchTrace<{ total_assets: number; total_verifications: number; compliance_rate: number }>('/v1/stats');
-  if (data) return NextResponse.json(data);
-  return NextResponse.json({
-    total_assets: 3,
-    total_verifications: 12,
-    compliance_rate: 1.0,
-  });
+ const data = await fetchTrace<{ total_assets: number; total_verifications: number; compliance_rate: number }>('/v1/stats');
+ if (data) return NextResponse.json(data);
+ return NextResponse.json({
+  total_assets: 3,
+  total_verifications: 12,
+  compliance_rate: 1.0,
+ });
 }

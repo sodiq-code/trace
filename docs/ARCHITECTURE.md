@@ -12,16 +12,16 @@
 ## 1. Design principles
 
 1. **No architecture theatre.** No microservices, Kubernetes, blockchain,
-   multi-agent systems, vector databases, or event buses. Every component must
-   answer: *what user value or competitive advantage does this create?*
+  multi-agent systems, vector databases, or event buses. Every component must
+  answer: *what user value or competitive advantage does this create?*
 2. **Deterministic core path.** Zero LLM calls in the stamp/verify path. C2PA
-   manifest generation is a deterministic library call; signature verification
-   is a deterministic crypto operation.
+  manifest generation is a deterministic library call; signature verification
+  is a deterministic crypto operation.
 3. **Sub-second promise.** Stamping must complete in under one second. Every
-   component that would break this (LLM parsing, network calls, heavy I/O) is
-   rejected from the core path.
+  component that would break this (LLM parsing, network calls, heavy I/O) is
+  rejected from the core path.
 4. **Creator-readable.** Every C2PA assertion is rendered in plain English on
-   the Provenance Card — never raw `std.c2pa.assertions.generator=midjourney-v6`.
+  the Provenance Card — never raw `std.c2pa.assertions.generator=midjourney-v6`.
 
 ## 2. High-level architecture
 
@@ -29,31 +29,31 @@ Three components:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
-│                            Trace (single Python process)               │
-│                                                                       │
-│  1. Stamper (python/trace/stamper.py)                                │
-│     └─ wraps c2pa-python Builder.sign_file()                          │
-│        ├─ build C2PA V2 manifest (c2pa.actions + std.trace.*)         │
-│        ├─ sign with ES256 (bundled fixture or ~/.trace/keys.pem)      │
-│        └─ embed manifest in asset → signed asset on disk              │
-│                                                                       │
-│  2. Verifier (python/trace/verifier.py)                              │
-│     └─ wraps c2pa-python Reader                                       │
-│        ├─ read embedded manifest                                      │
-│        ├─ validate claim signature (claimSignature.validated)         │
-│        └─ return creator-readable claim chain                         │
-│           (exposed as GET /v1/verify/<asset_id>)                │
-│                                                                       │
-│  3. Dashboard (web/ — Next.js)                                          │
-│     └─ Next.js app: drag-and-drop stamping + Provenance Card          │
-│                                                                       │
-│  SQLite (~/.trace/trace.db): creators, assets, manifests, verifications│
+│              Trace (single Python process)        │
+│                                    │
+│ 1. Stamper (python/trace/stamper.py)                │
+│   └─ wraps c2pa-python Builder.sign_file()             │
+│    ├─ build C2PA V2 manifest (c2pa.actions + std.trace.*)     │
+│    ├─ sign with ES256 (bundled fixture or ~/.trace/keys.pem)   │
+│    └─ embed manifest in asset → signed asset on disk       │
+│                                    │
+│ 2. Verifier (python/trace/verifier.py)               │
+│   └─ wraps c2pa-python Reader                    │
+│    ├─ read embedded manifest                   │
+│    ├─ validate claim signature (claimSignature.validated)     │
+│    └─ return creator-readable claim chain             │
+│      (exposed as GET /v1/verify/<asset_id>)        │
+│                                    │
+│ 3. Dashboard (web/ — Next.js)                     │
+│   └─ Next.js app: drag-and-drop stamping + Provenance Card     │
+│                                    │
+│ SQLite (~/.trace/trace.db): creators, assets, manifests, verifications│
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 3. Data model (SQLite)
 
-Four entities (report Sec 23.1). Schema is created idempotently on first
+Four entities . Schema is created idempotently on first
 connect (`db.py`).
 
 | Table | Key columns | Notes |
@@ -64,7 +64,7 @@ connect (`db.py`).
 | `verifications` | `verification_id` PK, `asset_id` FK, `verifier_ip`, `verifier_user_agent`, `verified_at`, `result` | One-to-many with `assets` |
 
 All writes use **parameterized queries** — SQL injection is impossible
-(report Sec 26.2). Verified by `test_db.py::test_parameterized_queries_prevent_injection`.
+. Verified by `test_db.py::test_parameterized_queries_prevent_injection`.
 
 ## 4. C2PA manifest design
 
@@ -96,27 +96,27 @@ their own CA-issued ES256 credentials.
 
 ## 6. API surface
 
-### Day 1 (shipped)
+### (shipped)
 
 ```
-trace init   [--email X --channel Y]            → provisions ~/.trace/
-trace stamp  <file> [--model --prompt --creator --out]
-                                              → signed asset + asset_id + card_url
-trace verify <file> [--json]                   → signature VALID/INVALID + claim chain
-trace list   [--limit N]                       → recent assets from SQLite
+trace init  [--email X --channel Y]      → provisions ~/.trace/
+trace stamp <file> [--model --prompt --creator --out]
+                       → signed asset + asset_id + card_url
+trace verify <file> [--json]          → signature VALID/INVALID + claim chain
+trace list  [--limit N]            → recent assets from SQLite
 ```
 
-### Day 2 (shipped)
+### (shipped)
 
 ```
-POST /v1/stamp                 → stamp an uploaded asset (multipart form)
-GET  /v1/verify/<asset_id>     → JSON {asset_id, file_hash, manifest: {assertions, signature_valid}, verifications}
-GET  /v1/manifest/<asset_id>   → JSON raw C2PA manifest + creator-readable assertions
-GET  /v1/assets                → recent assets (dashboard list)
-GET  /v1/stats                 → dashboard stats {total_assets, total_verifications, compliance_rate}
-GET  /card/<asset_id>          → HTML Provenance Card (public URL)
-GET  /healthz                  → liveness probe
-GET  /docs                     → automatic OpenAPI (technical maturity signal)
+POST /v1/stamp         → stamp an uploaded asset (multipart form)
+GET /v1/verify/<asset_id>   → JSON {asset_id, file_hash, manifest: {assertions, signature_valid}, verifications}
+GET /v1/manifest/<asset_id>  → JSON raw C2PA manifest + creator-readable assertions
+GET /v1/assets        → recent assets (dashboard list)
+GET /v1/stats         → dashboard stats {total_assets, total_verifications, compliance_rate}
+GET /card/<asset_id>     → HTML Provenance Card (public URL)
+GET /healthz         → liveness probe
+GET /docs           → automatic OpenAPI (technical maturity signal)
 ```
 
 FastAPI with automatic OpenAPI docs at `/docs`. The Next.js dashboard
@@ -133,7 +133,7 @@ proxy.
 | Trace → c2pa-python | Trusted (audited, pinned) | `c2pa-python==0.37.10`, no auto-update |
 | Verifier API → public internet | Untrusted (public) | Rate-limit 60/min per IP, 60s cache, fail-closed |
 
-Threats and mitigations (report Sec 26.2):
+Threats and mitigations :
 
 - **Manifest signing key compromise** — keys are local-only, 0600, never transmitted.
 - **Verifier API abuse (DDoS)** — rate-limit + cache + fail-closed .
@@ -155,15 +155,15 @@ Pre-stamped demo assets are bundled in samples/ as the demo-safe fallback.
 ## 9. Testing strategy
 
 - **Unit**: `test_stamper.py` — manifest construction, classification, hash,
-  prompt-length cap, latency target.
+ prompt-length cap, latency target.
 - **Integration**: `test_stamp_then_verify_roundtrip_valid` — Validation Test 1:
-  stamp a PNG, independently verify `validation_state: Valid`.
+ stamp a PNG, independently verify `validation_state: Valid`.
 - **API**: `test_api.py` — FastAPI TestClient covering all endpoints:
-  stamp (multipart upload), verify (Validation Test 2), manifest, assets,
-  stats, HTML card (Validation Test 3), end-to-end latency < 3s (Validation
-  Test 4), 404 handling, prompt-cap enforcement, verification logging.
+ stamp (multipart upload), verify (Validation Test 2), manifest, assets,
+ stats, HTML card (Validation Test 3), end-to-end latency < 3s (Validation
+ Test 4), 404 handling, prompt-cap enforcement, verification logging.
 - **CLI**: `test_cli.py` — every subcommand, including missing-file and
-  empty-list edge cases.
+ empty-list edge cases.
 - **DB**: `test_db.py` — schema creation, CRUD, ordering, SQL-injection safety.
 
 Coverage: **stamper 97.8%, verifier 84.2%, api/app 94.9%**, total 91.9%

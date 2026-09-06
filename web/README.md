@@ -7,8 +7,8 @@ the compliance dashboard, and the public Provenance Card page.
 
 ```
 Browser ──► Next.js (port 3000) ──rewrite──► FastAPI (port 8000)
-              /                       /api/v1/*          /v1/*
-              /card/[id]              /api/card/*        /card/*
+       /            /api/v1/*     /v1/*
+       /card/[id]       /api/card/*    /card/*
 ```
 
 The browser only ever makes same-origin requests to `/api/v1/*`. Next.js
@@ -33,12 +33,12 @@ trace serve --port 8000
 # 2. In another terminal, start the dashboard
 cd web
 npm install
-npm run dev    # opens http://localhost:3000
+npm run dev  # opens http://localhost:3000
 ```
 
 ## Design system
 
-Per report Section 29.5:
+Per report :
 - **Navy** `#1F3A5F` — primary (headers, buttons)
 - **Blue** `#2E5C8A` — secondary (hover states)
 - **Green** `#2E8B57` — compliance success (the signature VALID badge)
@@ -46,4 +46,4 @@ Per report Section 29.5:
 - **Gray** `#7A7A7A` — tertiary text
 
 The green compliance checkmark is the largest visual element on every screen
-(report Sec 29.1 principle 1: compliance-first hierarchy).
+( principle 1: compliance-first hierarchy).
