@@ -134,23 +134,44 @@ export async function stampAsset(
   if (opts.creator) form.append("creator", opts.creator);
 
   // Production: try a direct browser→backend upload first. This bypasses
-  // Vercel's 4.5 MB Route Handler body limit, so large media (video) works.
+  // Vercel's 4.5 MB Route Handler body limit, so large media (video) works
+  // up to the public backend's own limit (32 MB at the gateway).
   const publicUrl = resolvePublicUrl("/v1/stamp");
   if (publicUrl) {
     try {
       const res = await fetch(publicUrl, { method: "POST", body: form });
       if (res.ok) return jsonOrThrow<StampResponse>(res);
-      // If the direct upload fails with a non-413 error, surface it (the
-      // backend rejected the file for a real reason, e.g. invalid format).
-      if (res.status !== 413) return jsonOrThrow<StampResponse>(res);
-      // 413 from the backend itself (not Vercel) — fall through to same-origin.
-    } catch {
-      /* network/CORS error — fall through to same-origin proxy */
+      // 413 / EntityTooLarge from the backend or gateway: the file is too
+      // large. Do NOT fall through to the Vercel Route Handler (it has an
+      // even smaller 4.5 MB limit and would 413 too). Surface a clear error.
+      if (res.status === 413) {
+        const text = await res.text().catch(() => "");
+        if (text.includes("EntityTooLarge") || text.includes("payload size")) {
+          throw new Error(
+            `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB. Please compress the video or use a smaller file.`,
+          );
+        }
+        throw new Error(
+          `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB.`,
+        );
+      }
+      // Any other non-ok status: surface the backend's error (e.g. invalid
+      // file format) rather than silently retrying via the Route Handler.
+      return jsonOrThrow<StampResponse>(res);
+    } catch (err) {
+      // If it's already our friendly size error, rethrow it.
+      if (err instanceof Error && err.message.includes("File too large")) throw err;
+      // Network/CORS error — fall through to same-origin proxy (local dev).
     }
   }
 
   // Fallback (local dev, or backend unreachable): same-origin Route Handler.
   const res = await fetch(`${API_BASE}/stamp`, { method: "POST", body: form });
+  if (res.status === 413) {
+    throw new Error(
+      `File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). The maximum supported size is 30 MB. Please compress the video or use a smaller file.`,
+    );
+  }
   return jsonOrThrow<StampResponse>(res);
 }
 
