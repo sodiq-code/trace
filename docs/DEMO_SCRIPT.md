@@ -5,9 +5,9 @@
 
 ## Setup before recording
 
-1. Open `https://trace-provenance.vercel.app` (dashboard) in Chrome
-2. Open `https://trace-provenance.vercel.app/card/44837e88-a2fb-42bf-91f1-c0583365a146` (pre-stamped Provenance Card) in a second tab
-3. Clone the repo locally and run `trace serve` (for the live stamping demo)
+1. Open `https://trace-provenance.vercel.app` (dashboard) in Chrome — uploads work directly against the Railway backend (no body-size limit)
+2. After stamping, open the Provenance Card URL in a second tab
+3. No local setup needed — the public deployment does real C2PA stamping
 4. OBS Studio set to 1920x1080, 30fps
 
 ## 90-second beat sheet

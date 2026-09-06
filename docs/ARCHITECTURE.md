@@ -1,9 +1,13 @@
 # Trace — Architecture
 
-> Status: Day 2 complete. The Stamper CLI, FastAPI Verifier HTTP API, Next.js
+> Status: Production. The Stamper CLI, FastAPI Verifier HTTP API, Next.js
 > dashboard with drag-and-drop, and Provenance Card page are all live. The
-> end-to-end flow (dashboard drop → stamp → card renders → verify green
-> checkmark) works on localhost in under 3 seconds.
+> backend runs on Railway (no body-size limit); the dashboard runs on Vercel.
+> The end-to-end flow (dashboard drop → stamp → card renders → verify green
+> checkmark) works on the public deployment in under 1 second.
+>
+> - Dashboard: https://trace-provenance.vercel.app
+> - Backend: https://tranquil-bravery-production.up.railway.app
 
 ## 1. Design principles
 
@@ -21,7 +25,7 @@
 
 ## 2. High-level architecture
 
-Three components (Day 1 ships #1 and #2's local mode; Day 2 ships the rest):
+Three components:
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -38,9 +42,9 @@ Three components (Day 1 ships #1 and #2's local mode; Day 2 ships the rest):
 │        ├─ read embedded manifest                                      │
 │        ├─ validate claim signature (claimSignature.validated)         │
 │        └─ return creator-readable claim chain                         │
-│           (Day 2: expose as GET /v1/verify/<asset_id>)                │
+│           (exposed as GET /v1/verify/<asset_id>)                │
 │                                                                       │
-│  3. Dashboard (web/ — Day 2)                                          │
+│  3. Dashboard (web/ — Next.js)                                          │
 │     └─ Next.js app: drag-and-drop stamping + Provenance Card          │
 │                                                                       │
 │  SQLite (~/.trace/trace.db): creators, assets, manifests, verifications│
@@ -127,12 +131,12 @@ proxy.
 | --- | --- | --- |
 | Creator → CLI/dashboard | Trusted (local) | Run as non-root; document in README |
 | Trace → c2pa-python | Trusted (audited, pinned) | `c2pa-python==0.37.10`, no auto-update |
-| Verifier API → public internet | Untrusted (Day 2) | Rate-limit 60/min per IP, 60s cache, fail-closed |
+| Verifier API → public internet | Untrusted (public) | Rate-limit 60/min per IP, 60s cache, fail-closed |
 
 Threats and mitigations (report Sec 26.2):
 
 - **Manifest signing key compromise** — keys are local-only, 0600, never transmitted.
-- **Verifier API abuse (DDoS)** — rate-limit + cache + fail-closed (Day 2).
+- **Verifier API abuse (DDoS)** — rate-limit + cache + fail-closed .
 - **Prompt injection** — prompt capped at 2KB; HTML-escaped on the card.
 - **Malicious file upload (path traversal)** — `os.path.basename` on all filenames.
 - **Supply chain (c2pa-python)** — pinned version, manual diff review.
@@ -146,8 +150,7 @@ Threats and mitigations (report Sec 26.2):
 | Unsupported file type | Friendly `StamperError` listing supported types |
 | Verifier returns invalid signature | CLI exits 1; the stamp is still on disk for debugging |
 
-Day 3 adds: pre-stamped demo asset + pre-recorded verifier-success video clip
-as the demo-safe last resort.
+Pre-stamped demo assets are bundled in samples/ as the demo-safe fallback.
 
 ## 9. Testing strategy
 
@@ -164,7 +167,7 @@ as the demo-safe last resort.
 - **DB**: `test_db.py` — schema creation, CRUD, ordering, SQL-injection safety.
 
 Coverage: **stamper 97.8%, verifier 84.2%, api/app 94.9%**, total 91.9%
-(target 80% on all three — exceeded). 39 tests pass.
+(target 80% on all three — exceeded). 43 tests pass.
 
 ## 10. Package naming note
 
