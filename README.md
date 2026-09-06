@@ -209,6 +209,42 @@ diagram, API contracts, and security model.
 
 ---
 
+## End-to-end test
+
+The E2E flow (Validation Test 4): dashboard drop → stamp → Provenance Card →
+verify green checkmark.
+
+**Manual E2E test:**
+
+```bash
+# 1. Stamp an asset via the API
+curl -X POST https://tranquil-bravery-production.up.railway.app/v1/stamp \
+  -F "file=@your-image.png" \
+  -F "model=midjourney-v7" \
+  -F "prompt=test" \
+  -F "creator=maya@channel.com"
+
+# 2. Verify the asset (use the asset_id from step 1)
+curl https://tranquil-bravery-production.up.railway.app/v1/verify/<asset_id>
+
+# Expected: {"manifest":{"signature_valid":true,"validation_state":"Valid",...}}
+```
+
+**Automated test suite:**
+
+```bash
+make test        # 43 pytest tests (stamper 97.8%, verifier 84.2%, api 94.9%)
+make test-cov    # with coverage report
+```
+
+The test suite covers: manifest construction, file-type classification, SHA-256
+hashing, prompt-length cap, stamp-then-verify roundtrip (Validation Test 1),
+API endpoints (Validation Test 2), HTML card rendering (Validation Test 3),
+end-to-end latency < 3s (Validation Test 4), 404 handling, prompt-cap
+enforcement, verification logging, CLI subcommands, and DB CRUD.
+
+---
+
 ## Repository structure
 
 ```
