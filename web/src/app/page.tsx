@@ -126,13 +126,13 @@ export default function DashboardPage() {
   }, [refreshDashboard]);
 
   // --- Staging logic: files are staged, not immediately stamped ---
-  // The Vercel Hobby plan enforces a hard 4.5 MB request body limit on Route
+  // The Vercel Hobby plan enforces a hard 100 MB request body limit on Route
   // Handlers. The blueprint (§31.3) says: "keep demo assets under 5MB each".
-  // Files over 4.5 MB require the direct-to-backend path (which the fresh JS
+  // Files over 100 MB require the direct-to-backend path (which the fresh JS
   // uses automatically), but stale browser caches may still hit the Route
   // Handler. This guard ensures the error is always accurate.
   const addFiles = useCallback((fileList: File[]) => {
-    const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5 MB — Vercel Route Handler limit
+    const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100 MB — Railway has no body limit
     const accepted: File[] = [];
     const rejected: { name: string; size: number }[] = [];
     for (const file of fileList) {
@@ -143,12 +143,12 @@ export default function DashboardPage() {
       }
     }
     if (rejected.length > 0) {
-      toast.error(`${rejected.length} file${rejected.length === 1 ? '' : 's'} exceed the 4.5 MB limit`, {
+      toast.error(`${rejected.length} file${rejected.length === 1 ? '' : 's'} exceed the 100 MB limit`, {
         description:
           rejected
             .map((f) => `${f.name} (${(f.size / (1024 * 1024)).toFixed(1)} MB)`)
             .join(', ') +
-          '. Compress to under 4.5 MB, or run Trace locally for larger files (no limit).',
+          '. Compress to under 100 MB, or run Trace locally for larger files (no limit).',
       });
     }
     if (accepted.length === 0) return;
@@ -394,7 +394,7 @@ export default function DashboardPage() {
                   {stamping ? 'Stamping…' : 'Drop AI-generated assets here'}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — up to 4.5 MB each (Vercel limit — run locally for larger files).
+                  One or more files — PNG, JPEG, WEBP, SVG, WAV, MP3, MP4, MOV — up to 100 MB each (Vercel limit — run locally for larger files).
                   You can mix image, audio, and video; each gets its own model.
                 </p>
               </div>
