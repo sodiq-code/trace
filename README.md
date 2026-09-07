@@ -6,7 +6,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Live demo:** https://trace-provenance.vercel.app · **API docs:** https://tranquil-bravery-production.up.railway.app/docs
+**Live demo:** https://trace-provenance.vercel.app · **Demo video:** https://youtu.be/fkumbaSEj0A
 
 ---
 
@@ -109,7 +109,6 @@ Or try the live demo: https://trace-provenance.vercel.app — drop any file, pic
 - **CORS:** Open to all origins (the verifier is publicly callable).
 - **Cost:** $0/month (free tiers).
 
-See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for the full system design.
 
 ## Security & trust model
 
@@ -151,11 +150,15 @@ curl https://tranquil-bravery-production.up.railway.app/v1/verify/<asset_id>
 
 **Proof points:** Real ES256 signatures · `claimSignature.validated` · 43 tests pass · ~0.5s stamp latency · fresh-clone verified.
 
-## Project docs
+## Provenance evidence
 
-- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** — full system design, data model, security model
-- **[docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)** — 90-second demo walkthrough
-- **[docs/DEVPOST_SUBMISSION.md](docs/DEVPOST_SUBMISSION.md)** — submission text
+Every stamped asset has a public Provenance Card with a green "Cryptographic signature: VALID" badge. Try the verify button on each card:
+
+| Asset type | AI model | Provenance Card |
+| --- | --- | --- |
+| Image (PNG, 1.3 MB) | Gemini 3 Pro | [View card](https://trace-provenance.vercel.app/card/89a2f862-d16d-4818-80ff-e44974fce07a) |
+| Audio (MP3, 358 KB) | ElevenLabs v3 | [View card](https://trace-provenance.vercel.app/card/f414a7bf-294d-49c3-8fd0-b89a3e8269c9) |
+| Video (MP4, 9.4 MB) | Sora 2 | [View card](https://trace-provenance.vercel.app/card/5995dd79-c1ec-4530-8eff-5e2ced1297c3) |
 
 ## License
 
