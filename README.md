@@ -12,7 +12,7 @@
 
 ## Thesis
 
-> EU AI Act Article 50 transparency obligations take effect on 2 August 2026. For teams trying to operationalize provenance at scale, manual legal and compliance workflows can become expensive. Trace turns the resulting provenance requirement into a sub-second library call — provenance is a workflow, not a feature.
+> Provenance is a workflow step, not a feature you bolt on after the fact. By moving C2PA stamping to the moment of asset creation, Trace turns a manual compliance process into a sub-second library call.
 
 ---
 
@@ -28,9 +28,7 @@ The manifest records: which AI model generated the asset, the prompt used, the c
 
 ## Why it matters
 
-As the EU AI Act's Article 50 transparency obligations take effect on 2 August 2026, AI-generated and manipulated content increasingly needs machine-readable provenance and disclosure workflows. For teams trying to operationalize provenance at scale, manual legal and compliance workflows can become expensive and difficult to maintain.
-
-Trace makes provenance a **sub-second workflow step** instead of a costly post-production bolt-on.
+Three conditions converge in 2026: the EU AI Act's Article 50 transparency obligations take effect on 2 August 2026; the C2PA standard is now backed by Adobe, Microsoft, BBC, Google, and OpenAI; and major platforms are beginning to ingest C2PA manifests at scale. A creator-side provenance layer was impossible before this convergence — and is now necessary.
 
 ## How it works
 
