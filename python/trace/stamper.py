@@ -242,6 +242,14 @@ class Stamper:
           with c2pa.Builder(manifest_def, context) as builder:
             builder.sign_file(str(src), str(dest), signer)
     except c2pa.C2paError as exc: # pragma: no cover - defensive
+      msg = str(exc)
+      if "unsupported" in msg.lower() or "notsupported" in msg.lower():
+        raise StamperError(
+          f"c2pa could not parse this file. The file may be corrupt, "
+          f"truncated, or its actual format does not match the extension. "
+          f"Try re-exporting the file from the original AI tool. "
+          f"(detail: {msg})"
+        ) from exc
       raise StamperError(f"c2pa signing failed: {exc}") from exc
 
     # Verify roundtrip immediately (the green-path guarantee).
