@@ -2,7 +2,7 @@
 
 > Status: Production. The Stamper CLI, FastAPI Verifier HTTP API, Next.js
 > dashboard with drag-and-drop, and Provenance Card page are all live. The
-> backend runs on Railway (no body-size limit); the dashboard runs on Vercel.
+> backend runs on Railway (supports assets up to 100 MB); the dashboard runs on Vercel.
 > The end-to-end flow (dashboard drop → stamp → card renders → verify green
 > checkmark) works on the public deployment in under 1 second.
 >
