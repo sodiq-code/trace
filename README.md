@@ -40,6 +40,8 @@ Every stamped asset has a public Provenance Card with a green "Cryptographic sig
 
 Three conditions converge in 2026: the EU AI Act's Article 50 transparency obligations take effect on 2 August 2026; the C2PA standard is now backed by Adobe, Microsoft, BBC, Google, and OpenAI; and major platforms are beginning to ingest C2PA manifests at scale. A creator-side provenance layer was impossible before this convergence — and is now necessary.
 
+Every time you generate an AI thumbnail, voiceover, or short, Trace stamps it in under a second before you publish — so sponsors, platforms, and viewers can independently verify it came from you.
+
 ## How it works
 
 1. **Stamper** wraps [`c2pa-python 0.37.10`](https://github.com/contentauth/c2pa-python) (the official C2PA consortium Python bindings, wrapping the Rust SDK 0.90.19). It builds a C2PA V2 manifest with `c2pa.actions` (`digitalSourceType = trainedAlgorithmicMedia`) plus `std.trace.creator`, `std.trace.model`, and `std.trace.prompt` assertions, signs with ES256, and embeds it in the asset.
