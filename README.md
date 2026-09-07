@@ -36,6 +36,8 @@ Every stamped asset has a public Provenance Card with a green "Cryptographic sig
 | Audio (MP3, 358 KB) | ElevenLabs v3 | [View card](https://trace-provenance.vercel.app/card/f414a7bf-294d-49c3-8fd0-b89a3e8269c9) |
 | Video (MP4, 9.4 MB) | Sora 2 | [View card](https://trace-provenance.vercel.app/card/5995dd79-c1ec-4530-8eff-5e2ced1297c3) |
 
+No account needed. Anyone can verify it came from you.
+
 ## Why it matters
 
 Three conditions converge in 2026: the EU AI Act's Article 50 transparency obligations take effect on 2 August 2026; the C2PA standard is now backed by Adobe, Microsoft, BBC, Google, and OpenAI; and major platforms are beginning to ingest C2PA manifests at scale. A creator-side provenance layer was impossible before this convergence — and is now necessary.
