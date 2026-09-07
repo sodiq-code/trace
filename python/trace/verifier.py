@@ -1,9 +1,16 @@
 """Trace Verifier — reads & validates C2PA manifests from stamped assets.
 
-scope (): a local ``trace verify <file>``
-command that confirms a manifest is present and cryptographically intact.
-The HTTP Verifier API (``GET /v1/verify/<asset_id>``) is built later
-on top of this same reader.
+Provides both local and HTTP verification:
+
+- Local: the ``trace verify <file>`` CLI command confirms a manifest is
+  present and cryptographically intact.
+- HTTP: the FastAPI service exposes ``GET /v1/verify/<asset_id>`` on top
+  of this same reader (see ``api/app.py``).
+
+The signature check looks for ``claimSignature.validated`` in the c2pa-python
+Reader's validation results — this confirms the claim signature was verified
+against the embedded certificate, regardless of whether the certificate
+chains to a configured trust anchor.
 """
 from __future__ import annotations
 

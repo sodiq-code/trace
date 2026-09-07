@@ -249,7 +249,10 @@ class Stamper:
     verify = Verifier().verify_file(dest)
     validation_state = verify.validation_state or "Unknown"
 
-    # Persist to SQLite (best-effort; stamping still succeeds if DB is down).
+    # Persist to SQLite (best-effort by design). The signed asset is already
+    # on disk with a valid C2PA manifest embedded; the DB record is a
+    # convenience for the dashboard and report. If the DB is locked or
+    # unavailable, the stamp still succeeds — the manifest is in the file.
     if self.db is not None:
       try:
         creator_id = self.db.get_or_create_creator(creator_str, creator_str)
@@ -268,7 +271,7 @@ class Stamper:
           signed_at=signed_at,
           signed_by=creator_str,
         )
-      except Exception: # pragma: no cover - DB is best-effort
+      except Exception: # pragma: no cover - DB write is best-effort by design
         pass
 
     assertions = [
