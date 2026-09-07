@@ -26,6 +26,16 @@ Trace attaches **cryptographically-verifiable C2PA provenance manifests** to AI-
 
 The manifest records: which AI model generated the asset, the prompt used, the creator's identity, and a tamper-evident signature. Any modification to the file after stamping invalidates the manifest.
 
+## Provenance evidence
+
+Every stamped asset has a public Provenance Card with a green "Cryptographic signature: VALID" badge. Try the verify button on each card:
+
+| Asset type | AI model | Provenance Card |
+| --- | --- | --- |
+| Image (PNG, 1.3 MB) | Gemini 3 Pro | [View card](https://trace-provenance.vercel.app/card/89a2f862-d16d-4818-80ff-e44974fce07a) |
+| Audio (MP3, 358 KB) | ElevenLabs v3 | [View card](https://trace-provenance.vercel.app/card/f414a7bf-294d-49c3-8fd0-b89a3e8269c9) |
+| Video (MP4, 9.4 MB) | Sora 2 | [View card](https://trace-provenance.vercel.app/card/5995dd79-c1ec-4530-8eff-5e2ced1297c3) |
+
 ## Why it matters
 
 Three conditions converge in 2026: the EU AI Act's Article 50 transparency obligations take effect on 2 August 2026; the C2PA standard is now backed by Adobe, Microsoft, BBC, Google, and OpenAI; and major platforms are beginning to ingest C2PA manifests at scale. A creator-side provenance layer was impossible before this convergence — and is now necessary.
@@ -147,16 +157,6 @@ curl https://tranquil-bravery-production.up.railway.app/v1/verify/<asset_id>
 ```
 
 **Proof points:** Real ES256 signatures · `claimSignature.validated` · 43 tests pass · ~0.5s stamp latency · fresh-clone verified.
-
-## Provenance evidence
-
-Every stamped asset has a public Provenance Card with a green "Cryptographic signature: VALID" badge. Try the verify button on each card:
-
-| Asset type | AI model | Provenance Card |
-| --- | --- | --- |
-| Image (PNG, 1.3 MB) | Gemini 3 Pro | [View card](https://trace-provenance.vercel.app/card/89a2f862-d16d-4818-80ff-e44974fce07a) |
-| Audio (MP3, 358 KB) | ElevenLabs v3 | [View card](https://trace-provenance.vercel.app/card/f414a7bf-294d-49c3-8fd0-b89a3e8269c9) |
-| Video (MP4, 9.4 MB) | Sora 2 | [View card](https://trace-provenance.vercel.app/card/5995dd79-c1ec-4530-8eff-5e2ced1297c3) |
 
 ## License
 
