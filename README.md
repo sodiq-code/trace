@@ -6,7 +6,7 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Live demo:** https://trace-provenance.vercel.app · **Demo video:** https://youtu.be/fkumbaSEj0A
+**Live demo:** https://trace-provenance.vercel.app · **Demo video:** https://youtu.be/pvT07bj1nak
 
 ---
 
