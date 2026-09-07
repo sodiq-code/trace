@@ -12,7 +12,7 @@
 
 ## Thesis
 
-> EU AI Act Article 50 makes AI-content labeling mandatory from August 2026. Creators have no tool to comply at scale. Trace converts a $5K–$15K legal review into a sub-second library call — provenance is a workflow, not a feature.
+> EU AI Act Article 50 transparency obligations take effect on 2 August 2026. For teams trying to operationalize provenance at scale, manual legal and compliance workflows can become expensive. Trace turns the resulting provenance requirement into a sub-second library call — provenance is a workflow, not a feature.
 
 ---
 
@@ -28,7 +28,7 @@ The manifest records: which AI model generated the asset, the prompt used, the c
 
 ## Why it matters
 
-EU AI Act Article 50 (effective August 2026) requires AI-generated content to be labeled at the point of first exposure. Creators who use AI tools (Midjourney, ElevenLabs, Runway) have no way to comply without expensive legal review — $5K–$15K per asset, or risk of regulatory penalties.
+As the EU AI Act's Article 50 transparency obligations take effect on 2 August 2026, AI-generated and manipulated content increasingly needs machine-readable provenance and disclosure workflows. For teams trying to operationalize provenance at scale, manual legal and compliance workflows can become expensive and difficult to maintain.
 
 Trace makes provenance a **sub-second workflow step** instead of a costly post-production bolt-on.
 
@@ -103,11 +103,11 @@ Or try the live demo: https://trace-provenance.vercel.app — drop any file, pic
 
 ## Architecture
 
-- **Backend:** Railway (Python 3.12, FastAPI, c2pa-python 0.37.10, SQLite). No body-size limit.
+- **Backend:** Railway (Python 3.12, FastAPI, c2pa-python 0.37.10, SQLite). Supports assets up to 100 MB.
 - **Dashboard:** Vercel (Next.js 16, TypeScript, Tailwind, shadcn/ui). Static export.
 - **Upload path:** Browser → Railway (direct), bypassing Vercel's 4.5 MB Route Handler limit.
 - **CORS:** Open to all origins (the verifier is publicly callable).
-- **Cost:** $0/month (free tiers).
+- **Cost:** $0/month on the current free-tier deployment.
 
 
 ## Security & trust model
