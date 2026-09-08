@@ -1,6 +1,6 @@
-# Trace
+# Trace — The Provenance-First AI Content Engine
 
-> Provenance for AI-generated creator content.
+> Stamp every AI creator asset before publication — automatically, cryptographically, and in under a second.
 
 [![CI](https://github.com/sodiq-code/trace/actions/workflows/ci.yml/badge.svg)](https://github.com/sodiq-code/trace/actions/workflows/ci.yml)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
