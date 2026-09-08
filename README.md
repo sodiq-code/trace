@@ -40,7 +40,7 @@ No account needed. Anyone can verify it came from you.
 
 ## Why it matters
 
-Three conditions converge in 2026: the EU AI Act's Article 50 transparency obligations take effect on 2 August 2026; the C2PA standard is now backed by Adobe, Microsoft, BBC, Google, and OpenAI; and major platforms are beginning to ingest C2PA manifests at scale. Three things have now converged: AI media is generated at scale, C2PA has matured into an industry-backed standard, and Article 50 transparency obligations are in effect. A creator-side provenance layer was not viable before this convergence — and is now necessary.
+Three things have now converged: AI media is generated at scale, C2PA has matured into an industry-backed standard (backed by Adobe, Microsoft, BBC, Google, and OpenAI), and the EU AI Act's Article 50 transparency obligations are in effect (2 August 2026). A creator-side provenance layer was not viable before this convergence — and is now necessary.
 
 Every time you generate an AI thumbnail, voiceover, or short, Trace stamps it in under a second before you publish — so sponsors, platforms, and viewers can independently verify it came from you.
 
